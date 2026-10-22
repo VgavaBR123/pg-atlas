@@ -60,7 +60,8 @@ Um único processo Python (`pg_atlas`) é o único que fala com o banco, por uma
 | 4 | Functions, procedures e triggers | Sim | Não |
 | 5 | Receitas, índice e glossário | Sim | Sim (verificação) |
 | 6 | Atualização incremental | Parcial | Sim |
-| 7 | Relatório final e entrega | Pouco | Não |
+| 7 | Vault essencial do Obsidian | Sim | Não |
+| 8 | Relatório final e entrega | Pouco | Não |
 
 ---
 
@@ -289,7 +290,52 @@ Comando `python -m pg_atlas verificar catalogo --doc ../atlas-eldados`:
 
 ---
 
-## Fase 7 — Relatório final e entrega
+## Fase 7 — Vault essencial do Obsidian
+
+**Objetivo:** gerar uma versão enxuta da documentação para o Obsidian, com só o essencial para consulta futura. Não é uma cópia do repositório: é um resumo curado, com poucas ligações, para não virar um grafo emaranhado.
+
+### O que construir
+
+1. **Seleção do essencial** (sem LLM): comando `python -m pg_atlas obsidian selecionar --doc ../atlas-eldados`. Monta `_controle/obsidian/selecao.json` com:
+   - as tabelas citadas em receitas validadas;
+   - as tabelas centrais do grafo (as que mais recebem relacionamentos confirmados), excluindo `vazia` e `temporaria_ou_copia`;
+   - as tabelas e rotinas citadas em `config/fatos.yml`.
+
+   Os limites ficam em `config/projeto.yml` (padrão: até 15 tabelas por schema e 200 no total). Schemas sem tabela essencial entram só com a nota do schema.
+2. **Redação:** o agente `redator-obsidian` escreve as notas a partir das fichas completas, seguindo `templates/nota-obsidian.md`. Cada nota é curta: o que é, quando usar, filtros obrigatórios, armadilhas e uma consulta de exemplo.
+3. **Política de ligações** (o que mantém o vault limpo):
+   - cada nota de tabela tem um único link de "pertence a", para a nota do seu schema;
+   - no máximo 3 links "relacionado" para outras notas essenciais, só com relacionamento `confirmado`;
+   - nenhum link para tabela não essencial: ela é citada em texto simples, com o caminho da ficha completa no repositório;
+   - uma nota de índice (`00 - Índice.md`) lista os schemas, e cada nota de schema lista as suas tabelas essenciais. Não há outros links de navegação.
+4. **Metadados:** frontmatter em todas as notas com `tipo` (schema, tabela, rotina, receita, conceito), `schema`, `assunto`, `confianca` predominante, `atualizado_em` e `ficha_completa` (caminho no repositório). Tags só por `tipo` e `assunto`, nunca por tabela.
+5. **Verificação:** comando `python -m pg_atlas obsidian verificar`. Confere que todo link aponta para nota existente, que nenhuma nota passa do limite de links, que não há valor de dado e que toda nota tem frontmatter completo.
+6. **Atualização:** a fase 6 marca as notas cujas fichas mudaram, e o redator as reescreve. Notas de objetos removidos vão para `obsidian/_arquivo/`.
+
+### Saída
+
+```
+atlas-eldados/obsidian/
+├── 00 - Índice.md
+├── Como consultar.md              fatos essenciais e regras de uso para quem chega
+├── Schemas/<schema>.md
+├── Tabelas/<schema>.<tabela>.md
+├── Rotinas/<schema>.<rotina>.md    só as essenciais
+├── Receitas/<pergunta>.md          só as validadas mais úteis
+└── Conceitos/<termo>.md            termos do glossário que aparecem nas notas
+```
+
+A pasta pode ser aberta diretamente como vault no Obsidian ou copiada para um vault existente.
+
+### Critérios de aceite
+
+- `obsidian verificar` passa.
+- Nenhuma nota tem mais de 4 links (1 de pertencimento + 3 relacionados), exceto o índice e as notas de schema.
+- Toda nota de tabela aponta para a ficha completa.
+
+---
+
+## Fase 8 — Relatório final e entrega
 
 1. `python -m pg_atlas custos relatorio` gera `relatorios/custo-implementacao.md` (ver `CUSTOS.md`).
 2. `relatorios/relatorio-final.md`: o que foi documentado (números), cobertura (percentual de tabelas, colunas e rotinas com descrição), distribuição de confiança, dúvidas em aberto, como usar, como atualizar e custo.

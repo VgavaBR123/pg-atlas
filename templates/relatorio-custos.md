@@ -27,7 +27,8 @@
 | 4 Rotinas | | | | | | |
 | 5 Receitas e índice | | | | | | |
 | 6 Atualização | | | | | | |
-| 7 Entrega | | | | | | |
+| 7 Obsidian | | | | | | |
+| 8 Entrega | | | | | | |
 | **Total** | | | | | | |
 
 ## Consumo por modelo

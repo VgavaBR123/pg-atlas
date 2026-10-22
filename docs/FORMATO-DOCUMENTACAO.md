@@ -42,6 +42,7 @@ schemas/<schema>/
   _removidos/                fichas de objetos que deixaram de existir
 receitas/<assunto>/<slug>.md consultas validadas
 semantico/catalogo.yml       catálogo estruturado para ferramentas de text-to-SQL
+obsidian/                    vault enxuto com só o essencial (fase 7)
 relatorios/                  relatórios de fase, de mudanças e de custo
 ```
 
@@ -80,6 +81,7 @@ Os modelos de cada tipo de arquivo estão em `pg-atlas/templates/`:
 - `readme-schema.md`
 - `receita.md`
 - `llms.txt`
+- `nota-obsidian.md`
 
 ## Regras de escrita para os agentes
 

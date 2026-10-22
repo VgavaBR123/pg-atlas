@@ -49,5 +49,6 @@ Nenhuma decisão, de nenhum agente, passa por cima destas regras:
 | `analista-relacionamentos` | Resolve candidatos ambíguos de relacionamento (fase 2) |
 | `documentador` | Escreve fichas de tabela ou de rotina a partir de um lote (fases 3 a 5) |
 | `revisor` | Revisa fichas e receitas contra o catálogo, sem ter escrito o lote |
+| `redator-obsidian` | Escreve as notas enxutas do vault do Obsidian a partir das fichas (fase 7) |
 
 Subagentes não disparam outros subagentes: só a sessão principal (o orquestrador) dispara agentes.

@@ -40,6 +40,8 @@ Bancos de ERPs e sistemas legados costumam ter milhares de tabelas, poucas FKs d
 | 4. Functions e procedures | O que cada uma faz, o que lê e escreve, quem chama quem | Sim |
 | 5. Receitas | Queries de exemplo validadas por execução | Sim |
 | 6. Atualização | Diff do catálogo e redocumentação só do que mudou | Parcial |
+| 7. Obsidian | Vault enxuto com só o essencial e poucas ligações | Sim |
+| 8. Entrega | Relatório final e relatório de custo | Pouco |
 
 ## Validação
 

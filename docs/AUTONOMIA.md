@@ -60,7 +60,7 @@ escolher tarefa ─► implementador ─► validador ──aprovado──► gu
 5. **Guardar:** agente `guardiao`, que confere as regras invioláveis no que vai ser commitado (ver lista no `CLAUDE.md` do workspace).
 6. **Concluir:** commit no repositório certo, atualização de `estado.json` e de `ESTADO.md` (resumo legível do andamento), marca de fim no coletor de custos se a fase terminou.
 
-Nas fases 3, 4 e 5, que produzem documentação em vez de código, o laço é o mesmo com outros papéis: `documentador` no lugar do implementador, `revisor` no lugar do validador, mais as verificações mecânicas do `pg_atlas`.
+Nas fases 3, 4, 5 e 7, que produzem documentação em vez de código, o laço é o mesmo com outros papéis: `documentador` (ou `redator-obsidian`, na fase 7) no lugar do implementador, `revisor` no lugar do validador, mais as verificações mecânicas do `pg_atlas`.
 
 ### 3. Laço de decisão (agente `decisor`)
 
