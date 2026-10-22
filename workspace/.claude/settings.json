@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash(python:*)",
+      "Bash(.venv/Scripts/python:*)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(pip:*)",
+      "Bash(pytest:*)",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git push origin main)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh api repos/:*)",
+      "Bash(git remote get-url:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(claude --help)",
+      "Bash(claude --version)",
+      "WebFetch(domain:docs.claude.com)",
+      "WebFetch(domain:www.anthropic.com)",
+      "WebFetch(domain:www.bcb.gov.br)",
+      "WebFetch(domain:olinda.bcb.gov.br)",
+      "WebFetch(domain:pypi.org)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(**/.env)",
+      "Bash(cat:*.env*)",
+      "Bash(type:*.env*)",
+      "Bash(psql:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)"
+    ]
+  }
+}

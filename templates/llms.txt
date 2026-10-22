@@ -1,0 +1,19 @@
+# {Nome do banco}
+
+> {Uma frase: que sistema é, de quem, para que serve esta documentação.}
+
+Antes de escrever qualquer consulta, leia "Fatos essenciais". Toda afirmação nas fichas tem grau de confiança: declarado, confirmado ou hipotese. Prefira o que estiver confirmado.
+
+## Fatos essenciais
+
+- {filtro de tenant obrigatório e outros fatos de config/fatos.yml}
+
+## Comece por aqui
+
+- [Glossário](glossario.md): termos do negócio e onde estão no banco
+- [Receitas](receitas/): consultas prontas e validadas
+- [Dúvidas em aberto](duvidas.md)
+
+## Schemas
+
+- [{schema}](schemas/{schema}/README.md): {uma linha sobre o assunto}

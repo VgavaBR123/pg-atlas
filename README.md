@@ -2,7 +2,19 @@
 
 Ferramenta para mapear e documentar bancos PostgreSQL grandes e sem documentação, usando Claude Code com subagentes. O resultado é uma documentação legível por pessoas e por LLMs (Claude, ChatGPT ou modelos locais), pensada para que qualquer pessoa com acesso ao banco consiga pedir a uma IA a query certa.
 
-> Status: em planejamento. Ainda não há código neste repositório.
+> Status: planejamento concluído. O código é construído pelo próprio Claude Code a partir do plano, começando pelo [prompt inicial](PROMPT-INICIAL.md).
+
+## Documentos
+
+| Documento | Conteúdo |
+|---|---|
+| [PROMPT-INICIAL.md](PROMPT-INICIAL.md) | Como montar a pasta de trabalho e o prompt que inicia tudo |
+| [docs/PLANO.md](docs/PLANO.md) | O que construir em cada fase, com critérios de aceite |
+| [docs/AUTONOMIA.md](docs/AUTONOMIA.md) | Loop autônomo, agentes, política de decisões e gates humanos |
+| [docs/FORMATO-DOCUMENTACAO.md](docs/FORMATO-DOCUMENTACAO.md) | Como a documentação do banco é organizada e escrita |
+| [docs/CUSTOS.md](docs/CUSTOS.md) | Como o custo é medido e reportado |
+| [templates/](templates/) | Modelos de ficha, receita, README de schema, llms.txt e relatório de custos |
+| [workspace/](workspace/) | Arquivos copiados para a pasta de trabalho: CLAUDE.md, agentes, permissões, .env.example |
 
 ## O problema
 
