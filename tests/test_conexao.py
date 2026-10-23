@@ -418,3 +418,13 @@ def test_set_config_vindo_de_fora_e_barrado(projeto) -> None:
             conexao.executar("SELECT set_config('default_transaction_read_only', 'off', false)")
         with pytest.raises(SqlRejeitado):
             conexao.executar("SHOW default_transaction_read_only; SELECT 1")
+
+
+def test_erro_de_execucao_expoe_o_sqlstate_sem_texto_do_servidor(projeto) -> None:
+    falsa = ConexaoFalsa()
+    with Conexao(projeto, conectar=fabrica(falsa)) as conexao:
+        falsa.erro_na_consulta = psycopg.errors.QueryCanceled("texto do servidor")
+        with pytest.raises(ErroExecucao) as erro:
+            conexao.executar("SELECT 1")
+    assert erro.value.sqlstate == "57014"
+    assert "texto do servidor" not in str(erro.value)

@@ -31,6 +31,11 @@ FONTE_FK = "fk_declarada"
 SAIDA = ("relacionamentos", "grafo.json")
 NOTA_NOT_VALID = "FK declarada NOT VALID: o banco não garante as linhas anteriores à restrição"
 
+AVISO_VERIFICACAO = (
+    "Aviso: o bloco resumo.verificacao foi removido por estar desatualizado; "
+    "reexecute relacionamentos verificar --aplicar."
+)
+
 Relacao = tuple[str, str]
 
 
@@ -145,8 +150,9 @@ def montar_resumo(
     arestas: list[dict[str, Any]],
     inferencia_nome: dict[str, Any] | None = None,
     inferencia_codigo: dict[str, Any] | None = None,
+    verificacao: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Resumo derivado das arestas; os blocos opcionais `inferencia_nome` e `inferencia_codigo` são copiados."""
+    """Resumo derivado das arestas; os blocos opcionais `inferencia_nome`, `inferencia_codigo` e `verificacao` são copiados."""
     fks = [a for a in arestas if a["fonte"] == FONTE_FK]
     resumo = {
         "total": len(arestas),
@@ -166,6 +172,8 @@ def montar_resumo(
         resumo["inferencia_nome"] = inferencia_nome
     if inferencia_codigo is not None:
         resumo["inferencia_codigo"] = inferencia_codigo
+    if verificacao is not None:
+        resumo["verificacao"] = verificacao
     return resumo
 
 
@@ -220,6 +228,12 @@ def blocos_inferencia(caminho: Path) -> tuple[dict[str, Any] | None, dict[str, A
     return resumo.get("inferencia_nome"), resumo.get("inferencia_codigo")
 
 
+def avisar_verificacao_obsoleta(resumo: dict[str, Any]) -> None:
+    """Se o grafo tinha o bloco `verificacao`, ele será removido: avisa para reaplicar o cache (D-019)."""
+    if "verificacao" in resumo:
+        print(AVISO_VERIFICACAO, file=sys.stderr)
+
+
 def avisos_inferencia_obsoleta(grafo: dict[str, Any]) -> list[str]:
     """Arestas `inferencia_nome` cuja coluna de origem passou a ter FK declarada (só nomes de objeto)."""
     origens = {
@@ -246,13 +260,14 @@ def montar_grafo(
     outras: list[dict[str, Any]],
     inferencia_nome: dict[str, Any] | None = None,
     inferencia_codigo: dict[str, Any] | None = None,
+    verificacao: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     arestas = sorted(fks + outras, key=lambda a: a["id"])
     ids = [a["id"] for a in arestas]
     if len(set(ids)) != len(ids):
         repetido = next(i for i in ids if ids.count(i) > 1)
         raise ErroRelacionamentos(f"id de aresta repetido: {repetido}")
-    return {"versao_formato": VERSAO_FORMATO, "arestas": arestas, "resumo": montar_resumo(arestas, inferencia_nome, inferencia_codigo)}
+    return {"versao_formato": VERSAO_FORMATO, "arestas": arestas, "resumo": montar_resumo(arestas, inferencia_nome, inferencia_codigo, verificacao)}
 
 
 def executar_fks(doc: Path) -> dict[str, Any]:
@@ -260,6 +275,8 @@ def executar_fks(doc: Path) -> dict[str, Any]:
     fks, relacoes = extrair_fks(estruturas)
     conferir_arestas(fks, relacoes, contar_fks_catalogo(estruturas))
     caminho = doc.joinpath(*SAIDA)
+    if caminho.is_file():
+        avisar_verificacao_obsoleta(ler_grafo_existente(caminho)["resumo"])
     grafo = montar_grafo(fks, arestas_de_outras_fontes(caminho), *blocos_inferencia(caminho))
     validar(grafo)
     escrever_json(caminho, grafo)
@@ -280,6 +297,9 @@ def registrar(subparsers: argparse._SubParsersAction) -> None:  # type: ignore[t
     from pg_atlas import relacionamentos_codigo
 
     relacionamentos_codigo.registrar(etapas)
+    from pg_atlas import relacionamentos_verificar
+
+    relacionamentos_verificar.registrar(etapas)
 
 
 def executar(args: argparse.Namespace) -> int:

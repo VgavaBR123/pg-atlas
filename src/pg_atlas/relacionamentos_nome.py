@@ -27,6 +27,7 @@ from pg_atlas.relacionamentos import (
     SAIDA,
     ErroRelacionamentos,
     carregar_estruturas,
+    avisar_verificacao_obsoleta,
     ler_grafo_existente,
     montar_grafo,
     validar,
@@ -273,6 +274,7 @@ def executar_nome(doc: Path) -> dict[str, Any]:
     fks = [a for a in existente["arestas"] if a["fonte"] == FONTE_FK]
     if not fks:
         raise ErroRelacionamentos("O grafo não tem arestas fk_declarada. Rode 'relacionamentos fks' antes.")
+    avisar_verificacao_obsoleta(existente["resumo"])
     novas, bloco = inferir(estruturas, fks, coluna_de_tenant(doc))
     outras = [a for a in existente["arestas"] if a["fonte"] != FONTE_NOME]
     grafo = montar_grafo(outras, novas, bloco, existente["resumo"].get("inferencia_codigo"))

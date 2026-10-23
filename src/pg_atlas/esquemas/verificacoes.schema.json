@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "extremidade": {
+      "additionalProperties": false,
+      "properties": {
+        "colunas": {"items": {"type": "string"}, "minItems": 1, "type": "array"},
+        "relacao": {"type": "string"},
+        "schema": {"type": "string"}
+      },
+      "required": ["colunas", "relacao", "schema"],
+      "type": "object"
+    },
+    "registro": {
+      "additionalProperties": false,
+      "properties": {
+        "amostrados": {"minimum": 0, "type": "integer"},
+        "casados": {"minimum": 0, "type": "integer"},
+        "destino": {"$ref": "#/$defs/extremidade"},
+        "erro": {"type": ["string", "null"]},
+        "filtro_tenant": {"enum": ["correlacionado", "nenhum"]},
+        "metodo": {"enum": ["direto", "tablesample", null]},
+        "origem": {"$ref": "#/$defs/extremidade"},
+        "pct": {"maximum": 100, "minimum": 0, "type": ["number", "null"]},
+        "situacao": {"enum": ["amostra_vazia", "erro", "sem_select", "verificado"]},
+        "taxa": {"maximum": 1, "minimum": 0, "type": ["number", "null"]},
+        "verificado_em": {"type": "string"},
+        "versao_metodo": {"minimum": 1, "type": "integer"}
+      },
+      "required": [
+        "amostrados", "casados", "destino", "erro", "filtro_tenant", "metodo", "origem",
+        "pct", "situacao", "taxa", "verificado_em", "versao_metodo"
+      ],
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "formato": {"const": "verificacoes"},
+    "registros": {"items": {"$ref": "#/$defs/registro"}, "type": "array"},
+    "versao_formato": {"const": 1}
+  },
+  "required": ["formato", "registros", "versao_formato"],
+  "type": "object"
+}

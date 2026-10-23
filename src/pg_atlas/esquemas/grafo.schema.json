@@ -72,6 +72,53 @@
                     "total_objetos"
                   ]
                 }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "tipo": {
+                      "const": "amostragem"
+                    }
+                  },
+                  "required": [
+                    "tipo"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "amostrados": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "casados": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "desempate": {
+                      "const": "amostragem"
+                    },
+                    "filtro_tenant": {
+                      "enum": [
+                        "correlacionado",
+                        "nenhum"
+                      ]
+                    },
+                    "metodo": {
+                      "enum": [
+                        "direto",
+                        "tablesample"
+                      ]
+                    },
+                    "pct": {
+                      "maximum": 100,
+                      "minimum": 0,
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  }
+                }
               }
             ],
             "properties": {
@@ -401,6 +448,91 @@
         "total": {
           "minimum": 0,
           "type": "integer"
+        },
+        "verificacao": {
+          "additionalProperties": false,
+          "properties": {
+            "ambiguas_reduzidas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "amostra_pequena": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "amostra_vazia": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "confirmadas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "descartadas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "desempatadas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "erros": {
+              "$ref": "#/$defs/contagens"
+            },
+            "hipoteses": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "not_valid_medidas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "pares": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "pendentes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "por_filtro_tenant": {
+              "$ref": "#/$defs/contagens"
+            },
+            "por_metodo": {
+              "$ref": "#/$defs/contagens"
+            },
+            "sem_select": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "verificados": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "versao_metodo": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "ambiguas_reduzidas",
+            "amostra_pequena",
+            "amostra_vazia",
+            "confirmadas",
+            "descartadas",
+            "desempatadas",
+            "erros",
+            "hipoteses",
+            "not_valid_medidas",
+            "pares",
+            "pendentes",
+            "por_filtro_tenant",
+            "por_metodo",
+            "sem_select",
+            "verificados",
+            "versao_metodo"
+          ],
+          "type": "object"
         }
       },
       "required": [

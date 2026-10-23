@@ -24,7 +24,13 @@ class ErroTravaOcupada(ErroAtlas):
 
 
 class ErroExecucao(ErroAtlas):
+    """Falha ao executar um SQL aceito pelo guarda. `sqlstate` é só o código do servidor, nunca texto dele."""
+
     codigo_saida = 4
+
+    def __init__(self, mensagem: str, sqlstate: str | None = None) -> None:
+        super().__init__(mensagem)
+        self.sqlstate = sqlstate
 
 
 class SqlRejeitado(ErroAtlas):

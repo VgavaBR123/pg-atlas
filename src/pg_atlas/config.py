@@ -12,6 +12,10 @@ from pg_atlas.erros import ErroConfig
 
 STATEMENT_TIMEOUT_PADRAO_MS = 60_000
 LOCK_TIMEOUT_PADRAO_MS = 5_000
+TAXA_CONFIRMADO_PADRAO = 0.95
+TAXA_HIPOTESE_PADRAO = 0.50
+AMOSTRA_MAX_PADRAO = 1_000
+AMOSTRA_MIN_PADRAO = 30
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,22 @@ class Projeto:
         return self._inteiro("execucao", "lock_timeout_ms", LOCK_TIMEOUT_PADRAO_MS)
 
     @property
+    def taxa_confirmado(self) -> float:
+        return self._decimal_verificacoes("taxa_confirmado", TAXA_CONFIRMADO_PADRAO)
+
+    @property
+    def taxa_hipotese(self) -> float:
+        return self._decimal_verificacoes("taxa_hipotese", TAXA_HIPOTESE_PADRAO)
+
+    @property
+    def amostra_max_valores(self) -> int:
+        return self._inteiro_verificacoes("amostra_max_valores", AMOSTRA_MAX_PADRAO)
+
+    @property
+    def amostra_min_valores(self) -> int:
+        return self._inteiro_verificacoes("amostra_min_valores", AMOSTRA_MIN_PADRAO)
+
+    @property
     def controle(self) -> Path:
         return self.doc / "_controle"
 
@@ -55,6 +75,29 @@ class Projeto:
         if isinstance(valor, bool) or not isinstance(valor, int) or valor <= 0:
             raise ErroConfig(f"projeto.yml: '{secao}.{chave}' deve ser um inteiro positivo.")
         return valor
+
+    def _bloco_verificacoes(self) -> dict[str, Any]:
+        valor = self._secao("execucao").get("verificacoes") or {}
+        if not isinstance(valor, dict):
+            raise ErroConfig("projeto.yml: 'execucao.verificacoes' deve ser um mapa.")
+        return valor
+
+    def _inteiro_verificacoes(self, chave: str, padrao: int) -> int:
+        valor = self._bloco_verificacoes().get(chave)
+        if valor is None:
+            return padrao
+        if isinstance(valor, bool) or not isinstance(valor, int) or valor <= 0:
+            raise ErroConfig(f"projeto.yml: 'execucao.verificacoes.{chave}' deve ser um inteiro positivo.")
+        return valor
+
+    def _decimal_verificacoes(self, chave: str, padrao: float) -> float:
+        """Taxa entre 0 (exclusivo) e 1 (inclusivo); aceita inteiro ou decimal."""
+        valor = self._bloco_verificacoes().get(chave)
+        if valor is None:
+            return padrao
+        if isinstance(valor, bool) or not isinstance(valor, (int, float)) or not 0 < valor <= 1:
+            raise ErroConfig(f"projeto.yml: 'execucao.verificacoes.{chave}' deve ser um número entre 0 e 1.")
+        return float(valor)
 
 
 def resolver_workspace(doc: Path, workspace: Path | None = None) -> Path:

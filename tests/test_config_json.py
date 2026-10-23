@@ -72,3 +72,17 @@ def test_escrever_json_utf8_lf(tmp_path: Path) -> None:
     escrever_json(destino, {"n": 2, "nome": "João"})
     assert destino.read_bytes() == bruto
     assert not list(tmp_path.glob("sub/*.tmp"))
+
+
+def test_limiares_de_verificacao_tem_padrao_e_aceita_projeto(tmp_path) -> None:
+    from pg_atlas.config import Projeto
+
+    vazio = Projeto(doc=tmp_path, workspace=tmp_path, dados={})
+    assert (vazio.taxa_confirmado, vazio.taxa_hipotese) == (0.95, 0.5)
+    assert (vazio.amostra_max_valores, vazio.amostra_min_valores) == (1000, 30)
+    cfg = {"execucao": {"verificacoes": {"taxa_confirmado": 0.9, "amostra_min_valores": 10}}}
+    ajustado = Projeto(doc=tmp_path, workspace=tmp_path, dados=cfg)
+    assert ajustado.taxa_confirmado == 0.9 and ajustado.amostra_min_valores == 10
+    ruim = Projeto(doc=tmp_path, workspace=tmp_path, dados={"execucao": {"verificacoes": {"taxa_hipotese": 1.5}}})
+    with pytest.raises(ErroConfig):
+        ruim.taxa_hipotese

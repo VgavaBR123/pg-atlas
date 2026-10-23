@@ -404,7 +404,7 @@ class Conexao:
             self._descartar_transacao()
             mensagem = self._mensagem_segura(erro)
             self.registro.sql(sql, "erro", mensagem)
-            raise ErroExecucao(mensagem) from None
+            raise ErroExecucao(mensagem, getattr(erro, "sqlstate", None)) from None
         self._descartar_transacao()
         self.registro.sql(sql, "executado")
         return colunas, [tuple(linha) for linha in linhas]
