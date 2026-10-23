@@ -27,6 +27,10 @@ class Projeto:
         return str(self._secao("projeto").get("nome", ""))
 
     @property
+    def descricao(self) -> str:
+        return str(self._secao("projeto").get("descricao", ""))
+
+    @property
     def statement_timeout_ms(self) -> int:
         return self._inteiro("execucao", "statement_timeout_ms", STATEMENT_TIMEOUT_PADRAO_MS)
 

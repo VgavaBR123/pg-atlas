@@ -30,6 +30,7 @@ duvidas.md                   o que a validação não resolveu
 catalogo/
   _banco.json                resumo do banco
   _triagem.json              classificação das tabelas
+  _fichas.json               mapa objeto -> caminho da ficha
   estrutura/<schema>.json    estrutura completa (determinística)
   estatisticas/<schema>.json estatísticas voláteis
 relacionamentos/
@@ -38,7 +39,7 @@ relacionamentos/
 schemas/<schema>/
   README.md                  visão geral do schema
   tabelas/<tabela>.md        uma ficha por tabela, view ou view materializada
-  funcoes/<rotina>.md        uma ficha por function, procedure ou gatilho
+  funcoes/<rotina>.md        uma ficha por function, procedure, agregado ou função de janela (inclui a função de gatilho)
   _removidos/                fichas de objetos que deixaram de existir
 receitas/<assunto>/<slug>.md consultas validadas
 semantico/catalogo.yml       catálogo estruturado para ferramentas de text-to-SQL
@@ -46,7 +47,18 @@ obsidian/                    vault enxuto com só o essencial (fase 7)
 relatorios/                  relatórios de fase, de mudanças e de custo
 ```
 
-Nomes de arquivo: o nome do objeto como está no banco, em minúsculas. Rotinas sobrecarregadas (mesmo nome, argumentos diferentes) recebem sufixo `__<n>` e a assinatura completa no título.
+Nomes de arquivo, aplicados nesta ordem:
+
+1. Marcador de mascaramento `[mascarado:<tipo>:<N>]` vira `mascarado-<tipo>-<N>`.
+2. Minúsculas.
+3. Só letras e dígitos Unicode, `_`, `-` e `$`. Qualquer outro caractere (inclusive `.`, espaço, `~`) vira `~XX` por byte UTF-8, em hexadecimal maiúsculo.
+4. Nome reservado do Windows (`con`, `prn`, `aux`, `nul`, `com0`-`com9`, `lpt0`-`lpt9`) recebe `~` no fim.
+5. Nome com mais de 120 caracteres vira os primeiros 100 + `~` + 8 caracteres do SHA-1 do nome original.
+6. Objetos da mesma pasta que acabam com o mesmo nome (rotinas sobrecarregadas ou nomes que só diferem na caixa) recebem todos o sufixo `__<n>`, na ordem do nome original e dos argumentos de identidade. Objeto sem colisão não leva sufixo. A assinatura completa fica no título.
+
+Sobrando colisão (sem diferenciar caixa), o comando falha sem gerar nada. O mapa objeto -> caminho fica em `catalogo/_fichas.json`.
+
+Gatilhos não têm ficha própria: aparecem na ficha da tabela e na ficha da função de gatilho.
 
 ## Graus de confiança
 
@@ -62,7 +74,7 @@ No texto, o grau aparece entre colchetes no fim da frase ou na coluna da tabela:
 
 ## Marcadores de seção automática
 
-Seções geradas mecanicamente ficam entre:
+Seções geradas mecanicamente ficam entre marcadores, cada um sozinho na sua linha:
 
 ```
 <!-- pg-atlas:auto inicio secao="colunas" -->
@@ -70,7 +82,27 @@ Seções geradas mecanicamente ficam entre:
 <!-- pg-atlas:auto fim -->
 ```
 
-A regeneração reescreve só o que está entre esses marcadores. O texto fora deles (escrito pelos agentes ou por pessoas) é preservado.
+O nome da seção usa só `[a-z0-9_]` e não se repete no mesmo arquivo. Seções não se aninham.
+
+A regeneração reescreve só o que está entre esses marcadores. O texto fora deles (escrito pelos agentes ou por pessoas) é preservado. Seção automática ausente é reinserida na posição canônica. Marcadores quebrados (início sem fim, fim sem início, aninhamento, nome repetido ou ausente) fazem o arquivo ficar intacto e o comando terminar com erro.
+
+Seções de significado, que os agentes preenchem, ficam fora dos marcadores. Enquanto estão vazias, trazem logo abaixo do título:
+
+```
+<!-- pg-atlas:pendente fase="<n>" -->
+_Pendente: a preencher na fase <n>._
+```
+
+Quem preenche a seção apaga essas duas linhas. A contagem de pendências é feita pelo comentário. Isso não se confunde com "Significado não determinado", que é resultado do agente.
+
+Seções automáticas esperadas, na ordem canônica:
+
+- Ficha de tabela: `cabecalho`, `colunas`, `relacionamentos`, `indices`, `rotinas`, `dependencias`, e conforme o caso `definicao` (view) e `particoes` (tabela particionada). Partição tem ficha resumida: `cabecalho`, `indices`, `rotinas`.
+- Ficha de rotina: `cabecalho`, `dependencias`, `codigo`.
+- README do schema: `cabecalho`, `inventario`, `rotinas`, `sequencias`, `tipos`.
+- `llms.txt`: `llms`.
+
+Seção esperada sem conteúdo traz "Nenhum." e não é omitida.
 
 ## Modelos
 

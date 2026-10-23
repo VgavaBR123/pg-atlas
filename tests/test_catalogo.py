@@ -713,3 +713,40 @@ def test_credencial_em_rotina_registra_sem_valor() -> None:
     assert ("credencial", "funcao:somar", 3) in tipos
     assert "segredo" not in json.dumps(est) and "192.0.2.10" not in json.dumps(regs)
     assert mascara.varrer_documento(est) == []
+
+
+@pytest.mark.parametrize(
+    "texto,esperado",
+    [
+        ("v_senha := 'abc123'", "v_senha := '[mascarado:credencial]'"),
+        ("UPDATE t SET usuario_senha = 'x1'", "UPDATE t SET usuario_senha = '[mascarado:credencial]'"),
+        ("pwd='x'", "pwd='[mascarado:credencial]'"),
+        ("criar(p_PASSWORD => 'x')", "criar(p_PASSWORD => '[mascarado:credencial]')"),
+        ("\"senha\" = 'x'", "\"senha\" = '[mascarado:credencial]'"),
+        ("EXECUTE 'ALTER ROLE r WITH passwd=''x''", "EXECUTE 'ALTER ROLE r WITH passwd=''[mascarado:credencial]''"),
+        ("passwd = 'x' ::text", "passwd = '[mascarado:credencial]' ::text"),
+    ],
+)
+def test_mascara_atribuicao_de_senha_literal(texto: str, esperado: str) -> None:
+    saida, contagem = mascara.mascarar(texto)
+    assert saida == esperado and contagem == {"credencial": 1}
+    assert mascara.mascarar(saida) == (saida, {})  # idempotente
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "v_senha := p_senha",
+        "senha = md5(p_senha)",
+        "senha = ''",
+        "senha := 'a' || v_x",
+        "senha_hash := crypt(p_senha, gen_salt('bf'))",
+        "senha IS NULL",
+        "WHERE senha <> 'x' AND tipo = 'abc'",
+        "nome = 'x'",
+        "v_senha = $1",
+        "senha := '[mascarado:credencial]'",
+    ],
+)
+def test_mascara_atribuicao_de_senha_negativos(texto: str) -> None:
+    assert mascara.mascarar(texto) == (texto, {})

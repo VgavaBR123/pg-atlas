@@ -1,3 +1,4 @@
+<!-- pg-atlas:auto inicio secao="llms" -->
 # {Nome do banco}
 
 > {Uma frase: que sistema é, de quem, para que serve esta documentação.}
@@ -17,3 +18,4 @@ Antes de escrever qualquer consulta, leia "Fatos essenciais". Toda afirmação n
 ## Schemas
 
 - [{schema}](schemas/{schema}/README.md): {uma linha sobre o assunto}
+<!-- pg-atlas:auto fim -->

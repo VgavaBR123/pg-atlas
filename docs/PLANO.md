@@ -150,14 +150,27 @@ As candidatas a domínio são gravadas em `config/dominios-candidatos.yml` para 
 
 #### 1.4 Esqueleto da documentação
 
-Comando `python -m pg_atlas esqueleto --doc ../atlas-eldados`. A partir do catálogo, gera em Markdown, seguindo `FORMATO-DOCUMENTACAO.md`:
+Comando `python -m pg_atlas esqueleto --doc ../atlas-eldados`. Não conecta ao banco: lê só `catalogo/` (estrutura, estatísticas, `_banco.json`, `_triagem.json`) e `config/`. A partir do catálogo, gera em Markdown, seguindo `FORMATO-DOCUMENTACAO.md`:
 
 - `schemas/<schema>/README.md` com a lista de tabelas, views e functions do schema, contagens e triagem.
-- `schemas/<schema>/tabelas/<tabela>.md` com as seções mecânicas preenchidas (colunas, chaves, índices, gatilhos, estatísticas) e as seções de significado marcadas como pendentes.
-- `schemas/<schema>/funcoes/<funcao>.md` com assinatura, linguagem e código.
-- `llms.txt` provisório na raiz, apontando para os READMEs dos schemas.
+- `schemas/<schema>/tabelas/<tabela>.md` com as seções mecânicas preenchidas (colunas, chaves, índices, gatilhos, estatísticas) e as seções de significado marcadas como pendentes. Recebem ficha as tabelas, particionadas, partições (ficha resumida), views, materializadas e estrangeiras.
+- `schemas/<schema>/funcoes/<funcao>.md` com assinatura, linguagem e código. Recebem ficha as functions, procedures, agregados e funções de janela. Gatilhos não têm ficha própria: aparecem na ficha da tabela e na da função de gatilho.
+- `llms.txt` provisório na raiz, apontando para os READMEs dos schemas (a fase 5 o substitui).
+- `catalogo/_fichas.json`, o mapa objeto -> caminho da ficha, ordenado e sem colisões (base da verificação 1.5).
 
-As seções mecânicas ficam entre marcadores `<!-- pg-atlas:auto -->` e `<!-- /pg-atlas:auto -->`. Regenerar o esqueleto só reescreve o que está entre marcadores e nunca apaga o texto que os agentes escreveram nas fases seguintes.
+As seções mecânicas ficam entre marcadores, cada um sozinho na sua linha:
+
+```
+<!-- pg-atlas:auto inicio secao="<nome>" -->
+...
+<!-- pg-atlas:auto fim -->
+```
+
+O nome da seção usa só `[a-z0-9_]`, não se repete no arquivo e as seções não se aninham. As seções de significado ficam fora dos marcadores, com o comentário `<!-- pg-atlas:pendente fase="<n>" -->` e a linha `_Pendente: a preencher na fase <n>._`; quem as preenche apaga essas duas linhas.
+
+Regenerar o esqueleto só reescreve o que está entre marcadores e nunca apaga o texto que os agentes escreveram nas fases seguintes. Seção automática ausente é reinserida na posição canônica; seção que deixou de ser gerada fica intacta, com aviso. Arquivo com marcadores quebrados não é tocado: o comando informa o erro e termina com código diferente de zero depois de processar os demais. Fichas de objetos que sumiram do catálogo nunca são apagadas: ficam listadas em `_controle/esqueleto-orfas.json`.
+
+Estatísticas voláteis entram arredondadas (linhas com 2 algarismos significativos, tamanho com 1 casa, nulos em % com 1 casa) para o diff ficar limpo; último analyze e contagens de scan não entram nas fichas.
 
 #### 1.5 Verificação da fase
 

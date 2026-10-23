@@ -121,6 +121,13 @@ _RE_OPCAO = re.compile(
     r"(?P<valor>(?!\[mascarado:)[^'\n]+)(?P=q)",
     re.IGNORECASE,
 )
+# Atribuição de senha literal (complemento da D-010): `<id com senha/password/passwd/pwd> = 'x'`
+# (também `:=` e `=>`). Só literal não vazio e sem concatenação; variável ou chamada ficam intactas.
+_RE_ATRIBUICAO_SENHA = re.compile(
+    r"(?<![\w$])(?P<cabeca>[\w$]*(?:senha|password|passwd|pwd)[\w$]*\"?\s*(?::=|=>|=)\s*)"
+    r"(?P<q>''|')(?!\[mascarado:)(?P<valor>[^'\n]+)(?P=q)(?!\s*\|\|)",
+    re.IGNORECASE,
+)
 _RE_URI = re.compile(r"postgres(?:ql)?://" + _NAO_MARCADO + r"[^\s'\"<>)]+")
 _RE_SEPARADOR = re.compile(r"^[\s']{0,4}(?:\|\|[\s']{0,4})?$")
 
@@ -153,7 +160,10 @@ def _mascarar_credenciais(texto: str) -> tuple[str, int]:
         cursor = par.end("valor")
     saida.append(texto[cursor:])
     texto, n_opcoes = _mascarar_options("".join(saida))
-    return texto, n_uri + len(escolhidos) + n_opcoes
+    texto, n_senhas = _RE_ATRIBUICAO_SENHA.subn(
+        lambda m: f"{m['cabeca']}{m['q']}{marcador('credencial')}{m['q']}", texto
+    )
+    return texto, n_uri + len(escolhidos) + n_opcoes + n_senhas
 
 
 def _mascarar_options(texto: str) -> tuple[str, int]:
