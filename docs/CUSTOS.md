@@ -40,3 +40,45 @@ O custo equivalente é útil para comparar, orçar o futuro e mostrar o valor do
 - Premissas e limitações da medição.
 
 O relatório também é gerado parcialmente ao fim de cada fase (`relatorios/custo-parcial-fase-<n>.md`), para acompanhamento.
+
+## Comandos e formatos
+
+Todos recebem `--doc <pasta>`.
+
+- `custos marcar-inicio|marcar-fim --fase N [--tarefa X]`: acrescenta uma linha a `_controle/custos/fases.jsonl` (a chave `tarefa` só existe quando informada; linhas anteriores nunca são alteradas).
+- `custos coletar [--projetos <pasta>]`: lê todos os `.jsonl` da pasta (padrão `%USERPROFILE%\.claude\projects\<workspace codificado>`, subpastas `<sessao>/subagents` incluídas) e grava `_controle/custos/consumo.json`. A pasta é o caminho do workspace com todo caractere que não é letra ou dígito trocado por `-` (`C:\dev\atlas` vira `C--dev-atlas`).
+- `custos relatorio [--parcial --fase N]`: gera `relatorios/custo-implementacao.md` ou `relatorios/custo-parcial-fase-<n>.md`. Exige o `consumo.json` (rode `coletar` antes).
+
+Regras da coleta:
+
+- Só linhas com `type == "assistant"`; linhas malformadas e modelos sintéticos (`<synthetic>`) são ignorados.
+- A mesma resposta aparece em várias linhas (uma por bloco de conteúdo, com o mesmo `usage`). Deduplica-se por `message.id`, ou por `requestId` se faltar: valem os tokens da última ocorrência e o instante da primeira.
+- Atribuição por horário: a tarefa aberta mais interna (início mais recente) vence; senão a fase aberta; senão `sem_fase`. Um início sem fim fica aberto até o fim dos dados. O fim vale até o fim do segundo marcado.
+- Horas de execução: soma, por sessão, do intervalo entre a primeira e a última mensagem do assistente. É uma aproximação por cima: pausas dentro da sessão contam. As conversas de subagentes entram na sessão que as originou. As horas por fase e por tarefa usam a mesma conta sobre as mensagens do balde.
+- Só contagens são gravadas: nenhum texto de conversa e nenhum caminho de log.
+
+### `config/precos.yml`
+
+Preço em dólar por milhão de tokens, por modelo. O nome do modelo é o dos logs; se não houver chave exata vale a maior chave que seja prefixo do nome (sufixos de data).
+
+```yaml
+modelos:
+  claude-exemplo-1:
+    entrada: 0.0
+    saida: 0.0
+    cache_escrita_5m: 0.0
+    cache_escrita_1h: 0.0
+    cache_leitura: 0.0
+    fonte: "https://..."        # página oficial de preços
+    consultado_em: "AAAA-MM-DD"
+```
+
+### `config/cambio.yml`
+
+```yaml
+ptax_venda: 0.0               # reais por dólar
+fonte: "Banco Central do Brasil, PTAX"
+data: "AAAA-MM-DD"
+```
+
+Se faltar o preço de um modelo (ou de algum tipo de token com consumo) ou o câmbio, o relatório sai assim mesmo, com "preço não informado" ou "câmbio não informado" e um aviso nas premissas. O desembolso real vem de `custos.plano` e `custos.valor_mensal_brl` em `config/projeto.yml`; vazios, aparece "não informado". A produção é a contagem de `schemas/*/tabelas/*.md`, `schemas/*/funcoes/*.md` e `receitas/**/*.md` (as receitas ainda não distinguem as validadas).
