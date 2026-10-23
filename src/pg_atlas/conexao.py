@@ -16,7 +16,7 @@ import json
 import os
 import sys
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -380,8 +380,14 @@ class Conexao:
 
     # -- execução
 
-    def executar(self, sql: str, params: Sequence[Any] | None = None) -> list[tuple[Any, ...]]:
+    def executar(self, sql: str, params: Sequence[Any] | Mapping[str, Any] | None = None) -> list[tuple[Any, ...]]:
         """Passa o SQL pelo guarda, registra e executa. Devolve as linhas (lista de tuplas)."""
+        return self.executar_com_colunas(sql, params)[1]
+
+    def executar_com_colunas(
+        self, sql: str, params: Sequence[Any] | Mapping[str, Any] | None = None
+    ) -> tuple[list[str], list[tuple[Any, ...]]]:
+        """Como `executar`, mas devolve também os nomes das colunas do resultado."""
         try:
             guarda.verificar(sql)
         except SqlRejeitado as erro:
@@ -392,6 +398,7 @@ class Conexao:
         try:
             with self._conn.cursor() as cur:
                 cur.execute(sql, params)
+                colunas = [str(d[0]) for d in cur.description or []]
                 linhas = cur.fetchall() if cur.description else []
         except psycopg.Error as erro:
             self._descartar_transacao()
@@ -400,7 +407,7 @@ class Conexao:
             raise ErroExecucao(mensagem) from None
         self._descartar_transacao()
         self.registro.sql(sql, "executado")
-        return [tuple(linha) for linha in linhas]
+        return colunas, [tuple(linha) for linha in linhas]
 
     def _descartar_transacao(self) -> None:
         try:

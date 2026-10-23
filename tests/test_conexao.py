@@ -400,14 +400,14 @@ def test_so_a_abertura_de_sessao_executa_sql_sem_guarda() -> None:
                     and no.func.attr == "execute"
                 ):
                     achados.setdefault(funcao.name, []).append(no)
-    assert set(achados) <= {"_configurar_sessao", "executar", "execute"}
+    assert set(achados) <= {"_configurar_sessao", "executar_com_colunas", "execute"}
     for chamada in achados["_configurar_sessao"]:
         primeiro = chamada.args[0]
         assert isinstance(primeiro, ast.Name) and primeiro.id.startswith("SQL_SESSAO_")
     # `executar` chama o guarda antes de qualquer execute
     fonte = ast.get_source_segment(Path(modulo.__file__).read_text(encoding="utf-8"),
                                    next(f for f in ast.walk(arvore)
-                                        if isinstance(f, ast.FunctionDef) and f.name == "executar"))
+                                        if isinstance(f, ast.FunctionDef) and f.name == "executar_com_colunas"))
     assert fonte.index("guarda.verificar") < fonte.index(".execute(")
 
 
