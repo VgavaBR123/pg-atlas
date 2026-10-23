@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "fichas": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "argumentos_identidade": {"type": ["string", "null"]},
+          "caminho": {"type": "string", "pattern": "^schemas/[^/]+/(tabelas|funcoes)/[^/]+[.]md$"},
+          "nome": {"type": "string"},
+          "schema": {"type": "string"},
+          "tipo": {"type": "string"}
+        },
+        "required": ["argumentos_identidade", "caminho", "nome", "schema", "tipo"],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "formato": {"const": "fichas"},
+    "versao_formato": {"type": "integer"}
+  },
+  "required": ["fichas", "formato", "versao_formato"],
+  "type": "object"
+}

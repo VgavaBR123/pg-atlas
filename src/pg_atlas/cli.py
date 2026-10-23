@@ -16,7 +16,7 @@ from pathlib import Path
 from pg_atlas import __version__
 from pg_atlas.erros import ErroAtlas
 
-MODULOS_DE_COMANDOS = ("pg_atlas.diagnostico", "pg_atlas.custos", "pg_atlas.catalogo", "pg_atlas.triagem", "pg_atlas.esqueleto")
+MODULOS_DE_COMANDOS = ("pg_atlas.diagnostico", "pg_atlas.custos", "pg_atlas.catalogo", "pg_atlas.triagem", "pg_atlas.esqueleto", "pg_atlas.verificacao")
 
 
 def adicionar_argumentos_comuns(parser: argparse.ArgumentParser) -> None:
