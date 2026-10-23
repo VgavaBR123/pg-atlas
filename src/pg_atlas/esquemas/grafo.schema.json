@@ -135,6 +135,94 @@
           ],
           "type": "object"
         },
+        "inferencia_nome": {
+          "additionalProperties": false,
+          "properties": {
+            "arestas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "calibracao_fk": {
+              "additionalProperties": false,
+              "properties": {
+                "por_regra": {
+                  "additionalProperties": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "acerto_ambiguo": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "acerto_unico": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "erro": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "repetem_fk": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "acerto_ambiguo",
+                      "acerto_unico",
+                      "erro",
+                      "repetem_fk"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "object"
+                },
+                "sem_candidato": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "por_regra",
+                "sem_candidato"
+              ],
+              "type": "object"
+            },
+            "colunas_ambiguas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "colunas_analisadas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "colunas_com_candidato": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "excluidas_fk": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "excluidas_tenant": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "por_regra": {
+              "$ref": "#/$defs/contagens"
+            }
+          },
+          "required": [
+            "arestas",
+            "calibracao_fk",
+            "colunas_ambiguas",
+            "colunas_analisadas",
+            "colunas_com_candidato",
+            "excluidas_fk",
+            "excluidas_tenant",
+            "por_regra"
+          ],
+          "type": "object"
+        },
         "por_confianca": {
           "$ref": "#/$defs/contagens"
         },

@@ -1,5 +1,7 @@
 """Comando `relacionamentos <etapa>`: grafo de relacionamentos entre tabelas (decisão D-016).
 
+Etapa `nome`: ver `relacionamentos_nome.py` (D-017).
+
 Etapa `fks`: FKs declaradas, direto do catálogo, confiança `declarado`. Não conecta ao banco;
 lê só `<doc>/catalogo/estrutura/*.json` (já mascarado) e grava `<doc>/relacionamentos/grafo.json`
 (determinístico, validado por `esquemas/grafo.schema.json`).
@@ -12,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from importlib import resources
 from pathlib import Path
 from typing import Any
@@ -138,10 +141,10 @@ def _contar(valores: list[str]) -> dict[str, int]:
     return {v: valores.count(v) for v in sorted(set(valores))}
 
 
-def montar_resumo(arestas: list[dict[str, Any]]) -> dict[str, Any]:
-    """Resumo derivado das arestas."""
+def montar_resumo(arestas: list[dict[str, Any]], inferencia_nome: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Resumo derivado das arestas; o bloco opcional `inferencia_nome` é copiado como veio (D-017)."""
     fks = [a for a in arestas if a["fonte"] == FONTE_FK]
-    return {
+    resumo = {
         "total": len(arestas),
         "por_confianca": _contar([a["confianca"] for a in arestas]),
         "por_fonte": _contar([a["fonte"] for a in arestas]),
@@ -155,6 +158,9 @@ def montar_resumo(arestas: list[dict[str, Any]]) -> dict[str, Any]:
             "not_valid": sum(any(e.get("validada") is False for e in a["evidencia"]) for a in fks),
         },
     }
+    if inferencia_nome is not None:
+        resumo["inferencia_nome"] = inferencia_nome
+    return resumo
 
 
 # ----------------------------------------------------------------- validação
@@ -178,28 +184,60 @@ def validar(documento: Any, rotulo: str = "grafo.json") -> None:
         )
 
 
-def arestas_de_outras_fontes(caminho: Path) -> list[dict[str, Any]]:
-    """Arestas já gravadas cuja fonte não é `fk_declarada`; grafo existente inválido falha."""
-    if not caminho.is_file():
-        return []
+def ler_grafo_existente(caminho: Path) -> dict[str, Any]:
+    """Grafo já gravado, validado pelo esquema; JSON inválido ou fora do formato falha."""
     try:
         existente = json.loads(caminho.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         raise ErroRelacionamentos(f"{caminho} existe mas não é um JSON válido; nada foi sobrescrito.") from None
     validar(existente, f"{caminho.name} existente")
-    return [a for a in existente["arestas"] if a["fonte"] != FONTE_FK]
+    return existente
+
+
+def arestas_de_outras_fontes(caminho: Path) -> list[dict[str, Any]]:
+    """Arestas já gravadas cuja fonte não é `fk_declarada`; grafo existente inválido falha."""
+    if not caminho.is_file():
+        return []
+    return [a for a in ler_grafo_existente(caminho)["arestas"] if a["fonte"] != FONTE_FK]
+
+
+def bloco_inferencia_nome(caminho: Path) -> dict[str, Any] | None:
+    """Bloco `resumo.inferencia_nome` do grafo existente, se houver (o `fks` não o recalcula)."""
+    if not caminho.is_file():
+        return None
+    return ler_grafo_existente(caminho)["resumo"].get("inferencia_nome")
+
+
+def avisos_inferencia_obsoleta(grafo: dict[str, Any]) -> list[str]:
+    """Arestas `inferencia_nome` cuja coluna de origem passou a ter FK declarada (só nomes de objeto)."""
+    origens = {
+        (a["origem"]["schema"], a["origem"]["relacao"], c)
+        for a in grafo["arestas"]
+        if a["fonte"] == FONTE_FK
+        for c in a["origem"]["colunas"]
+    }
+    avisos = []
+    for a in grafo["arestas"]:
+        o = a["origem"]
+        if a["fonte"] == "inferencia_nome" and (o["schema"], o["relacao"], o["colunas"][0]) in origens:
+            avisos.append(
+                f"Aviso: {a['id']} tem origem com FK declarada; reexecute relacionamentos nome."
+            )
+    return avisos
 
 
 # ----------------------------------------------------------------- execução
 
 
-def montar_grafo(fks: list[dict[str, Any]], outras: list[dict[str, Any]]) -> dict[str, Any]:
+def montar_grafo(
+    fks: list[dict[str, Any]], outras: list[dict[str, Any]], inferencia_nome: dict[str, Any] | None = None
+) -> dict[str, Any]:
     arestas = sorted(fks + outras, key=lambda a: a["id"])
     ids = [a["id"] for a in arestas]
     if len(set(ids)) != len(ids):
         repetido = next(i for i in ids if ids.count(i) > 1)
         raise ErroRelacionamentos(f"id de aresta repetido: {repetido}")
-    return {"versao_formato": VERSAO_FORMATO, "arestas": arestas, "resumo": montar_resumo(arestas)}
+    return {"versao_formato": VERSAO_FORMATO, "arestas": arestas, "resumo": montar_resumo(arestas, inferencia_nome)}
 
 
 def executar_fks(doc: Path) -> dict[str, Any]:
@@ -207,7 +245,7 @@ def executar_fks(doc: Path) -> dict[str, Any]:
     fks, relacoes = extrair_fks(estruturas)
     conferir_arestas(fks, relacoes, contar_fks_catalogo(estruturas))
     caminho = doc.joinpath(*SAIDA)
-    grafo = montar_grafo(fks, arestas_de_outras_fontes(caminho))
+    grafo = montar_grafo(fks, arestas_de_outras_fontes(caminho), bloco_inferencia_nome(caminho))
     validar(grafo)
     escrever_json(caminho, grafo)
     return grafo
@@ -221,11 +259,16 @@ def registrar(subparsers: argparse._SubParsersAction) -> None:  # type: ignore[t
     fks = etapas.add_parser("fks", help="FKs declaradas do catálogo, confiança 'declarado'")
     adicionar_argumentos_comuns(fks)
     fks.set_defaults(func=executar)
+    from pg_atlas import relacionamentos_nome  # import tardio: o módulo importa este
+
+    relacionamentos_nome.registrar(etapas)
 
 
 def executar(args: argparse.Namespace) -> int:
     projeto = carregar_projeto(args.doc, args.workspace)
     grafo = executar_fks(projeto.doc)
+    for aviso in avisos_inferencia_obsoleta(grafo):
+        print(aviso, file=sys.stderr)
     r = grafo["resumo"]
     f = r["fk_declarada"]
     print(f"Grafo: {r['total']} arestas ({SAIDA[0]}/{SAIDA[1]}); fk_declarada={r['por_fonte'].get(FONTE_FK, 0)}.")
