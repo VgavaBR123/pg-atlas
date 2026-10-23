@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "criterios": {
+      "additionalProperties": false,
+      "properties": {
+        "limite_dominio_linhas": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "limite_fato_linhas": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "precedencia": {
+          "items": {
+            "$ref": "#/$defs/classe"
+          },
+          "type": "array"
+        },
+        "termos_dominio": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "termos_temporaria": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "limite_dominio_linhas",
+        "limite_fato_linhas",
+        "precedencia",
+        "termos_dominio",
+        "termos_temporaria"
+      ],
+      "type": "object"
+    },
+    "estatisticas_extraidas_em": {
+      "type": "string"
+    },
+    "formato": {
+      "const": "triagem"
+    },
+    "resumo": {
+      "additionalProperties": false,
+      "properties": {
+        "por_classe": {
+          "$ref": "#/$defs/contagem_por_classe"
+        },
+        "por_schema": {
+          "additionalProperties": {
+            "$ref": "#/$defs/contagem_por_classe"
+          },
+          "type": "object"
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "por_classe",
+        "por_schema",
+        "total"
+      ],
+      "type": "object"
+    },
+    "tabelas": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "acesso": {
+            "type": "string"
+          },
+          "classe": {
+            "$ref": "#/$defs/classe"
+          },
+          "linhas_estimadas": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "linhas_triagem": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "linhas_vivas": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "nome": {
+            "type": "string"
+          },
+          "particao_de": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema": {
+            "type": "string"
+          },
+          "sinais": {
+            "items": {
+              "$ref": "#/$defs/sinal"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "termos_dominio": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tipo": {
+            "enum": [
+              "particionada",
+              "tabela"
+            ]
+          }
+        },
+        "required": [
+          "acesso",
+          "classe",
+          "linhas_estimadas",
+          "linhas_triagem",
+          "linhas_vivas",
+          "nome",
+          "particao_de",
+          "schema",
+          "sinais",
+          "termos_dominio",
+          "tipo"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "versao_formato": {
+      "const": 1
+    }
+  },
+  "required": [
+    "criterios",
+    "estatisticas_extraidas_em",
+    "formato",
+    "resumo",
+    "tabelas",
+    "versao_formato"
+  ],
+  "title": "Triagem das tabelas (catalogo/_triagem.json)",
+  "type": "object",
+  "$defs": {
+    "classe": {
+      "enum": [
+        "comum",
+        "dominio_candidata",
+        "fato_grande",
+        "particao",
+        "temporaria_ou_copia",
+        "vazia"
+      ]
+    },
+    "contagem_por_classe": {
+      "additionalProperties": false,
+      "properties": {
+        "comum": {"minimum": 0, "type": "integer"},
+        "dominio_candidata": {"minimum": 0, "type": "integer"},
+        "fato_grande": {"minimum": 0, "type": "integer"},
+        "particao": {"minimum": 0, "type": "integer"},
+        "temporaria_ou_copia": {"minimum": 0, "type": "integer"},
+        "vazia": {"minimum": 0, "type": "integer"}
+      },
+      "required": [
+        "comum",
+        "dominio_candidata",
+        "fato_grande",
+        "particao",
+        "temporaria_ou_copia",
+        "vazia"
+      ],
+      "type": "object"
+    },
+    "sinal": {
+      "enum": [
+        "contagem_zero",
+        "particao",
+        "porte_dominio",
+        "porte_fato",
+        "prefixo_underscore",
+        "sem_estatistica",
+        "soma_particoes",
+        "sufixo_data",
+        "sufixo_mascarado",
+        "sufixo_numerico",
+        "termo_dominio",
+        "termo_temporario"
+      ]
+    }
+  }
+}

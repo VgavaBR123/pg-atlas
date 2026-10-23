@@ -28,6 +28,8 @@ cd pg-atlas
 ../.venv/Scripts/python -m pg_atlas diagnostico --doc ../<repositorio-de-documentacao>
 ```
 
+A triagem (`../.venv/Scripts/python -m pg_atlas triagem --doc ../<repositorio-de-documentacao>`) não conecta ao banco: lê só `catalogo/` (rode `pg_atlas catalogo` antes) e classifica cada tabela em `particao`, `vazia`, `temporaria_ou_copia`, `dominio_candidata`, `fato_grande` ou `comum`, nessa ordem de precedência. Grava `catalogo/_triagem.json` e `config/dominios-candidatos.yml` (sobrescrito a cada execução; `config/dominios.yml`, a lista aprovada, nunca é tocado) e atualiza a tarefa 1.3 em `_controle/estado.json`.
+
 O `diagnostico` lê o `.env` da pasta de trabalho (modelo em `.env.example`) e confirma que a sessão é somente leitura. Sem o `.env`, falha apontando o arquivo a preencher. Testes que precisam de banco: `pytest -m banco` (defina `PG_ATLAS_DOC_REAL`). O extra opcional `pglast` (`pip install -e "pg-atlas[pglast]"`) só é necessário na fase 4.
 
 ## O problema
