@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "extremidade": {
+      "additionalProperties": false,
+      "properties": {
+        "colunas": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "relacao": {
+          "type": "string"
+        },
+        "schema": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "colunas",
+        "relacao",
+        "schema"
+      ],
+      "type": "object"
+    },
+    "aresta": {
+      "additionalProperties": false,
+      "properties": {
+        "confianca": {
+          "enum": [
+            "confirmado",
+            "declarado",
+            "hipotese"
+          ]
+        },
+        "destino": {
+          "$ref": "#/$defs/extremidade"
+        },
+        "evidencia": {
+          "items": {
+            "properties": {
+              "tipo": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "tipo"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "fonte": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "nota": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "origem": {
+          "$ref": "#/$defs/extremidade"
+        },
+        "taxa_casamento": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "confianca",
+        "destino",
+        "evidencia",
+        "fonte",
+        "id",
+        "nota",
+        "origem",
+        "taxa_casamento"
+      ],
+      "type": "object"
+    },
+    "contagens": {
+      "additionalProperties": {
+        "minimum": 0,
+        "type": "integer"
+      },
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "arestas": {
+      "items": {
+        "$ref": "#/$defs/aresta"
+      },
+      "type": "array"
+    },
+    "resumo": {
+      "additionalProperties": false,
+      "properties": {
+        "fk_declarada": {
+          "additionalProperties": false,
+          "properties": {
+            "autorreferencias": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "entre_schemas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "not_valid": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "varias_colunas": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "autorreferencias",
+            "entre_schemas",
+            "not_valid",
+            "varias_colunas"
+          ],
+          "type": "object"
+        },
+        "por_confianca": {
+          "$ref": "#/$defs/contagens"
+        },
+        "por_fonte": {
+          "$ref": "#/$defs/contagens"
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fk_declarada",
+        "por_confianca",
+        "por_fonte",
+        "total"
+      ],
+      "type": "object"
+    },
+    "versao_formato": {
+      "const": 1
+    }
+  },
+  "required": [
+    "arestas",
+    "resumo",
+    "versao_formato"
+  ],
+  "type": "object"
+}
