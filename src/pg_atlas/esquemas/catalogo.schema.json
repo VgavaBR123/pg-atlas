@@ -1,0 +1,1116 @@
+{
+  "$defs": {
+    "banco": {
+      "additionalProperties": false,
+      "properties": {
+        "extraido_em": {
+          "type": "string"
+        },
+        "formato": {
+          "const": "banco"
+        },
+        "schemas": {
+          "additionalProperties": {
+            "$ref": "#/$defs/contagem"
+          },
+          "type": "object"
+        },
+        "tamanho_bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "totais": {
+          "$ref": "#/$defs/contagem"
+        },
+        "total_schemas": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "versao": {
+          "type": "string"
+        },
+        "versao_formato": {
+          "const": 1
+        }
+      },
+      "required": [
+        "extraido_em",
+        "formato",
+        "schemas",
+        "tamanho_bytes",
+        "totais",
+        "total_schemas",
+        "versao",
+        "versao_formato"
+      ],
+      "type": "object"
+    },
+    "coluna": {
+      "additionalProperties": false,
+      "properties": {
+        "comentario": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expressao_gerada": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gerada": {
+          "enum": [
+            "armazenada",
+            null
+          ]
+        },
+        "identidade": {
+          "enum": [
+            "padrao",
+            "sempre",
+            null
+          ]
+        },
+        "nome": {
+          "type": "string"
+        },
+        "obrigatoria": {
+          "type": "boolean"
+        },
+        "ordem": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "padrao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tipo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "comentario",
+        "expressao_gerada",
+        "gerada",
+        "identidade",
+        "nome",
+        "obrigatoria",
+        "ordem",
+        "padrao",
+        "tipo"
+      ],
+      "type": "object"
+    },
+    "contagem": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "type": "object"
+    },
+    "dependencia": {
+      "additionalProperties": false,
+      "properties": {
+        "relacao": {
+          "type": "string"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "tipo": {
+          "enum": [
+            "composto",
+            "estrangeira",
+            "materializada",
+            "particionada",
+            "sequencia",
+            "tabela",
+            "view",
+            null
+          ]
+        }
+      },
+      "required": [
+        "relacao",
+        "schema",
+        "tipo"
+      ],
+      "type": "object"
+    },
+    "estatistica_coluna": {
+      "additionalProperties": false,
+      "properties": {
+        "avg_width": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "correlation": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "herdada": {
+          "type": "boolean"
+        },
+        "n_distinct": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "nome": {
+          "type": "string"
+        },
+        "null_frac": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "avg_width",
+        "correlation",
+        "herdada",
+        "n_distinct",
+        "nome",
+        "null_frac"
+      ],
+      "type": "object"
+    },
+    "estatistica_relacao": {
+      "additionalProperties": false,
+      "properties": {
+        "colunas": {
+          "items": {
+            "$ref": "#/$defs/estatistica_coluna"
+          },
+          "type": "array"
+        },
+        "idx_scans": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "linhas_estimadas": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "linhas_lidas_seq": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "linhas_mortas": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "linhas_vivas": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "nome": {
+          "type": "string"
+        },
+        "paginas": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "seq_scans": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "tamanho_tabela_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "tamanho_total_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "tipo": {
+          "enum": [
+            "estrangeira",
+            "materializada",
+            "particionada",
+            "tabela",
+            "view",
+            null
+          ]
+        },
+        "ultimo_analyze": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ultimo_autoanalyze": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ultimo_autovacuum": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ultimo_vacuum": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "colunas",
+        "idx_scans",
+        "linhas_estimadas",
+        "linhas_lidas_seq",
+        "linhas_mortas",
+        "linhas_vivas",
+        "nome",
+        "paginas",
+        "seq_scans",
+        "tamanho_tabela_bytes",
+        "tamanho_total_bytes",
+        "tipo",
+        "ultimo_analyze",
+        "ultimo_autoanalyze",
+        "ultimo_autovacuum",
+        "ultimo_vacuum"
+      ],
+      "type": "object"
+    },
+    "estatisticas": {
+      "additionalProperties": false,
+      "properties": {
+        "extraido_em": {
+          "type": "string"
+        },
+        "formato": {
+          "const": "estatisticas"
+        },
+        "relacoes": {
+          "items": {
+            "$ref": "#/$defs/estatistica_relacao"
+          },
+          "type": "array"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "versao_formato": {
+          "const": 1
+        }
+      },
+      "required": [
+        "extraido_em",
+        "formato",
+        "relacoes",
+        "schema",
+        "versao_formato"
+      ],
+      "type": "object"
+    },
+    "estrutura": {
+      "additionalProperties": false,
+      "properties": {
+        "comentario": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dono": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "formato": {
+          "const": "estrutura"
+        },
+        "funcoes": {
+          "items": {
+            "$ref": "#/$defs/funcao"
+          },
+          "type": "array"
+        },
+        "relacoes": {
+          "items": {
+            "$ref": "#/$defs/relacao"
+          },
+          "type": "array"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "sequencias": {
+          "items": {
+            "$ref": "#/$defs/sequencia"
+          },
+          "type": "array"
+        },
+        "tipos": {
+          "items": {
+            "$ref": "#/$defs/tipo"
+          },
+          "type": "array"
+        },
+        "versao_formato": {
+          "const": 1
+        }
+      },
+      "required": [
+        "comentario",
+        "dono",
+        "formato",
+        "funcoes",
+        "relacoes",
+        "schema",
+        "sequencias",
+        "tipos",
+        "versao_formato"
+      ],
+      "type": "object"
+    },
+    "funcao": {
+      "additionalProperties": false,
+      "properties": {
+        "acesso": {
+          "enum": [
+            "ok",
+            "sem_execute"
+          ]
+        },
+        "argumentos": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "argumentos_identidade": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "codigo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "comentario": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dono": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "estrita": {
+          "type": "boolean"
+        },
+        "linguagem": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nome": {
+          "type": "string"
+        },
+        "retorno": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "security_definer": {
+          "type": "boolean"
+        },
+        "tipo": {
+          "enum": [
+            "aggregate",
+            "function",
+            "procedure",
+            "window",
+            null
+          ]
+        },
+        "volatilidade": {
+          "enum": [
+            "estavel",
+            "imutavel",
+            "volatil",
+            null
+          ]
+        }
+      },
+      "required": [
+        "acesso",
+        "argumentos",
+        "argumentos_identidade",
+        "codigo",
+        "comentario",
+        "dono",
+        "estrita",
+        "linguagem",
+        "nome",
+        "retorno",
+        "security_definer",
+        "tipo",
+        "volatilidade"
+      ],
+      "type": "object"
+    },
+    "gatilho": {
+      "additionalProperties": false,
+      "properties": {
+        "definicao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "eventos": {
+          "items": {
+            "enum": [
+              "DELETE",
+              "INSERT",
+              "TRUNCATE",
+              "UPDATE"
+            ]
+          },
+          "type": "array"
+        },
+        "funcao_nome": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "funcao_schema": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "habilitado": {
+          "enum": [
+            "desabilitado",
+            "origem",
+            "replica",
+            "sempre",
+            null
+          ]
+        },
+        "momento": {
+          "enum": [
+            "AFTER",
+            "BEFORE",
+            "INSTEAD OF",
+            null
+          ]
+        },
+        "nivel": {
+          "enum": [
+            "ROW",
+            "STATEMENT",
+            null
+          ]
+        },
+        "nome": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "definicao",
+        "eventos",
+        "funcao_nome",
+        "funcao_schema",
+        "habilitado",
+        "momento",
+        "nivel",
+        "nome"
+      ],
+      "type": "object"
+    },
+    "indice": {
+      "additionalProperties": false,
+      "properties": {
+        "colunas": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "definicao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "metodo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nome": {
+          "type": "string"
+        },
+        "parcial": {
+          "type": "boolean"
+        },
+        "predicado": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "primario": {
+          "type": "boolean"
+        },
+        "unico": {
+          "type": "boolean"
+        },
+        "valido": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "colunas",
+        "definicao",
+        "metodo",
+        "nome",
+        "parcial",
+        "predicado",
+        "primario",
+        "unico",
+        "valido"
+      ],
+      "type": "object"
+    },
+    "mascaramento": {
+      "additionalProperties": false,
+      "properties": {
+        "formato": {
+          "const": "mascaramento"
+        },
+        "registros": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "campo": {
+                "type": "string"
+              },
+              "objeto": {
+                "type": "string"
+              },
+              "quantidade": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "schema": {
+                "type": "string"
+              },
+              "tipo": {
+                "enum": [
+                  "cnpj",
+                  "cpf",
+                  "credencial",
+                  "email",
+                  "ip",
+                  "telefone"
+                ]
+              }
+            },
+            "required": [
+              "campo",
+              "objeto",
+              "quantidade",
+              "schema",
+              "tipo"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "versao_formato": {
+          "const": 1
+        }
+      },
+      "required": [
+        "formato",
+        "registros",
+        "versao_formato"
+      ],
+      "type": "object"
+    },
+    "particao": {
+      "additionalProperties": false,
+      "properties": {
+        "limite": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pai_nome": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pai_schema": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "limite",
+        "pai_nome",
+        "pai_schema"
+      ],
+      "type": "object"
+    },
+    "relacao": {
+      "additionalProperties": false,
+      "properties": {
+        "acesso": {
+          "enum": [
+            "ok",
+            "sem_select"
+          ]
+        },
+        "chave_particao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "colunas": {
+          "items": {
+            "$ref": "#/$defs/coluna"
+          },
+          "type": "array"
+        },
+        "comentario": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "definicao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "depende_de": {
+          "items": {
+            "$ref": "#/$defs/dependencia"
+          },
+          "type": "array"
+        },
+        "dono": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gatilhos": {
+          "items": {
+            "$ref": "#/$defs/gatilho"
+          },
+          "type": "array"
+        },
+        "indices": {
+          "items": {
+            "$ref": "#/$defs/indice"
+          },
+          "type": "array"
+        },
+        "nome": {
+          "type": "string"
+        },
+        "particao": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/particao"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "persistencia": {
+          "enum": [
+            "permanente",
+            "temporaria",
+            "unlogged",
+            null
+          ]
+        },
+        "populada": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "restricoes": {
+          "items": {
+            "$ref": "#/$defs/restricao"
+          },
+          "type": "array"
+        },
+        "tipo": {
+          "enum": [
+            "estrangeira",
+            "materializada",
+            "particionada",
+            "tabela",
+            "view"
+          ]
+        }
+      },
+      "required": [
+        "acesso",
+        "chave_particao",
+        "colunas",
+        "comentario",
+        "definicao",
+        "depende_de",
+        "dono",
+        "gatilhos",
+        "indices",
+        "nome",
+        "particao",
+        "persistencia",
+        "populada",
+        "restricoes",
+        "tipo"
+      ],
+      "type": "object"
+    },
+    "restricao": {
+      "additionalProperties": false,
+      "properties": {
+        "acao_delete": {
+          "enum": [
+            "cascade",
+            "no_action",
+            "restrict",
+            "set_default",
+            "set_null",
+            null
+          ]
+        },
+        "acao_update": {
+          "enum": [
+            "cascade",
+            "no_action",
+            "restrict",
+            "set_default",
+            "set_null",
+            null
+          ]
+        },
+        "adiada": {
+          "type": "boolean"
+        },
+        "adiavel": {
+          "type": "boolean"
+        },
+        "colunas": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "definicao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "herdada": {
+          "type": "boolean"
+        },
+        "nome": {
+          "type": "string"
+        },
+        "ref_colunas": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ref_relacao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ref_schema": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tipo": {
+          "enum": [
+            "check",
+            "fk",
+            "pk",
+            "uk"
+          ]
+        },
+        "tipo_match": {
+          "enum": [
+            "full",
+            "partial",
+            "simple",
+            null
+          ]
+        },
+        "validada": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "acao_delete",
+        "acao_update",
+        "adiada",
+        "adiavel",
+        "colunas",
+        "definicao",
+        "herdada",
+        "nome",
+        "ref_colunas",
+        "ref_relacao",
+        "ref_schema",
+        "tipo",
+        "tipo_match",
+        "validada"
+      ],
+      "type": "object"
+    },
+    "sequencia": {
+      "additionalProperties": false,
+      "properties": {
+        "cache": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "ciclica": {
+          "type": "boolean"
+        },
+        "coluna_nome": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "coluna_relacao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "coluna_schema": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dono": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "incremento": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "inicio": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "maximo": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "minimo": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "nome": {
+          "type": "string"
+        },
+        "por_identidade": {
+          "type": "boolean"
+        },
+        "tipo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "cache",
+        "ciclica",
+        "coluna_nome",
+        "coluna_relacao",
+        "coluna_schema",
+        "dono",
+        "incremento",
+        "inicio",
+        "maximo",
+        "minimo",
+        "nome",
+        "por_identidade",
+        "tipo"
+      ],
+      "type": "object"
+    },
+    "tipo": {
+      "additionalProperties": false,
+      "properties": {
+        "atributos": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "categoria": {
+          "enum": [
+            "composto",
+            "dominio",
+            "enum"
+          ]
+        },
+        "comentario": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dono": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nome": {
+          "type": "string"
+        },
+        "obrigatorio": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "padrao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "restricoes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tipo_base": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "valores": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "atributos",
+        "categoria",
+        "comentario",
+        "dono",
+        "nome",
+        "obrigatorio",
+        "padrao",
+        "restricoes",
+        "tipo_base",
+        "valores"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "pg-atlas/catalogo.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/estrutura"
+    },
+    {
+      "$ref": "#/$defs/estatisticas"
+    },
+    {
+      "$ref": "#/$defs/banco"
+    },
+    {
+      "$ref": "#/$defs/mascaramento"
+    }
+  ],
+  "title": "Arquivos do catálogo do pg-atlas (estrutura, estatísticas e resumo do banco)"
+}
