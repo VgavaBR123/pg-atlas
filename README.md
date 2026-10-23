@@ -16,6 +16,20 @@ Ferramenta para mapear e documentar bancos PostgreSQL grandes e sem documentaç�
 | [templates/](templates/) | Modelos de ficha, receita, README de schema, llms.txt e relatório de custos |
 | [workspace/](workspace/) | Arquivos copiados para a pasta de trabalho: CLAUDE.md, agentes, permissões, .env.example |
 
+## Instalação e testes
+
+Pré-requisito: Python 3.11 ou superior. A partir da pasta de trabalho (a pasta-mãe deste repositório):
+
+```
+py -3.14 -m venv .venv
+.venv/Scripts/python -m pip install -e "pg-atlas[dev]"
+cd pg-atlas
+../.venv/Scripts/python -m pytest          # testes offline (os marcados "banco" são pulados)
+../.venv/Scripts/python -m pg_atlas diagnostico --doc ../<repositorio-de-documentacao>
+```
+
+O `diagnostico` lê o `.env` da pasta de trabalho (modelo em `.env.example`) e confirma que a sessão é somente leitura. Sem o `.env`, falha apontando o arquivo a preencher. Testes que precisam de banco: `pytest -m banco` (defina `PG_ATLAS_DOC_REAL`). O extra opcional `pglast` (`pip install -e "pg-atlas[pglast]"`) só é necessário na fase 4.
+
 ## O problema
 
 Bancos de ERPs e sistemas legados costumam ter milhares de tabelas, poucas FKs declaradas, regras de negócio escondidas em functions e nenhuma documentação. Ferramentas de dicionário de dados resolvem a estrutura, mas não explicam o significado. LLMs conseguem explicar, mas erram quando recebem o schema cru e, se conectadas direto ao banco em paralelo, sobrecarregam a conexão.

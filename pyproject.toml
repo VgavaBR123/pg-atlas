@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pg-atlas"
+dynamic = ["version"]
+description = "Mapeia e documenta bancos PostgreSQL grandes, somente leitura e com uma única conexão."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "psycopg[binary]>=3.1",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+    "jsonschema>=4.0",
+    "sqlglot>=25.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+pglast = ["pglast>=6.0"]   # opcional: pode não instalar no Windows (fase 4)
+
+[project.scripts]
+pg-atlas = "pg_atlas.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "pg_atlas.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pg_atlas = ["sql/**/*.sql", "esquemas/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not banco'"
+markers = [
+    "banco: teste que precisa de conexão real com o banco (pulado por padrão; use -m banco)",
+]
