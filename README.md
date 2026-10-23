@@ -13,7 +13,7 @@ Ferramenta para mapear e documentar bancos PostgreSQL grandes e sem documentaç�
 | [docs/AUTONOMIA.md](docs/AUTONOMIA.md) | Loop autônomo, agentes, política de decisões e gates humanos |
 | [docs/FORMATO-DOCUMENTACAO.md](docs/FORMATO-DOCUMENTACAO.md) | Como a documentação do banco é organizada e escrita |
 | [docs/CUSTOS.md](docs/CUSTOS.md) | Como o custo é medido e reportado |
-| [templates/](templates/) | Modelos de ficha, receita, README de schema, llms.txt e relatório de custos |
+| [templates/](templates/) | Modelos de ficha, receita, README de schema, llms.txt, relatório de custos e relatório da fase 1 |
 | [workspace/](workspace/) | Arquivos copiados para a pasta de trabalho: CLAUDE.md, agentes, permissões, .env.example |
 
 ## Instalação e testes
@@ -31,6 +31,8 @@ cd pg-atlas
 A triagem (`../.venv/Scripts/python -m pg_atlas triagem --doc ../<repositorio-de-documentacao>`) não conecta ao banco: lê só `catalogo/` (rode `pg_atlas catalogo` antes) e classifica cada tabela em `particao`, `vazia`, `temporaria_ou_copia`, `dominio_candidata`, `fato_grande` ou `comum`, nessa ordem de precedência. Grava `catalogo/_triagem.json` e `config/dominios-candidatos.yml` (sobrescrito a cada execução; `config/dominios.yml`, a lista aprovada, nunca é tocado) e atualiza a tarefa 1.3 em `_controle/estado.json`.
 
 A verificação da fase 1 (`../.venv/Scripts/python -m pg_atlas verificar catalogo --doc ../<repositorio-de-documentacao>`) confere o catálogo: contagem de objetos por schema contra uma consulta leve de catálogo no banco (uma conexão só, respeita `db.lock`), validação de todos os JSON contra o JSON Schema, varredura de chaves/valores proibidos (`most_common_vals` e semelhantes) e de CPF/CNPJ sem máscara, e correspondência objeto <-> ficha do esqueleto. `--sem-banco` pula só a contagem. Grava `_controle/verificacao-catalogo.json` e sai com código diferente de zero se qualquer verificação falhar.
+
+O relatório da fase 1 (`../.venv/Scripts/python -m pg_atlas relatorio catalogo --doc ../<repositorio-de-documentacao>`) não conecta ao banco: lê o catálogo, a triagem, a verificação, o mascaramento (só totais por tipo), as marcas de fase e o consumo, e grava `relatorios/fase-1-catalogo.md` (números do banco, triagem, 20 maiores tabelas, contagem de objetos sem acesso, tempo e custo da fase). O conteúdo gerado fica entre marcadores `pg-atlas:auto`; a seção "Observações" é escrita à mão e preservada. Modelo em `templates/relatorio-fase-1.md`.
 
 O `diagnostico` lê o `.env` da pasta de trabalho (modelo em `.env.example`) e confirma que a sessão é somente leitura. Sem o `.env`, falha apontando o arquivo a preencher. Testes que precisam de banco: `pytest -m banco` (defina `PG_ATLAS_DOC_REAL`). O extra opcional `pglast` (`pip install -e "pg-atlas[pglast]"`) só é necessário na fase 4.
 

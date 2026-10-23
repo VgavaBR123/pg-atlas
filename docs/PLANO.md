@@ -185,6 +185,8 @@ Comando `python -m pg_atlas verificar catalogo --doc ../atlas-eldados`:
 
 `relatorios/fase-1-catalogo.md`: números do banco (schemas, tabelas, views, functions, procedures, gatilhos, sequências), distribuição da triagem, maiores tabelas, objetos sem acesso, tempo de execução, custo da fase.
 
+Gerado pelo comando `python -m pg_atlas relatorio catalogo --doc ../atlas-eldados` (offline, lê só arquivos; modelo em `templates/relatorio-fase-1.md`). Seções automáticas entre marcadores `pg-atlas:auto`; a seção "Observações" é escrita à mão e nunca reescrita.
+
 ### Critérios de aceite da fase 1
 
 - Todos os schemas configurados extraídos, sem erro, com `estado.json` mostrando 100%.
