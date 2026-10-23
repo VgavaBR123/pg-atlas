@@ -1,6 +1,6 @@
 """Comando `relacionamentos <etapa>`: grafo de relacionamentos entre tabelas (decisão D-016).
 
-Etapa `nome`: ver `relacionamentos_nome.py` (D-017).
+Etapa `nome`: ver `relacionamentos_nome.py` (D-017). Etapa `codigo`: ver `relacionamentos_codigo.py` (D-018).
 
 Etapa `fks`: FKs declaradas, direto do catálogo, confiança `declarado`. Não conecta ao banco;
 lê só `<doc>/catalogo/estrutura/*.json` (já mascarado) e grava `<doc>/relacionamentos/grafo.json`
@@ -141,8 +141,12 @@ def _contar(valores: list[str]) -> dict[str, int]:
     return {v: valores.count(v) for v in sorted(set(valores))}
 
 
-def montar_resumo(arestas: list[dict[str, Any]], inferencia_nome: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Resumo derivado das arestas; o bloco opcional `inferencia_nome` é copiado como veio (D-017)."""
+def montar_resumo(
+    arestas: list[dict[str, Any]],
+    inferencia_nome: dict[str, Any] | None = None,
+    inferencia_codigo: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Resumo derivado das arestas; os blocos opcionais `inferencia_nome` e `inferencia_codigo` são copiados."""
     fks = [a for a in arestas if a["fonte"] == FONTE_FK]
     resumo = {
         "total": len(arestas),
@@ -160,6 +164,8 @@ def montar_resumo(arestas: list[dict[str, Any]], inferencia_nome: dict[str, Any]
     }
     if inferencia_nome is not None:
         resumo["inferencia_nome"] = inferencia_nome
+    if inferencia_codigo is not None:
+        resumo["inferencia_codigo"] = inferencia_codigo
     return resumo
 
 
@@ -203,9 +209,15 @@ def arestas_de_outras_fontes(caminho: Path) -> list[dict[str, Any]]:
 
 def bloco_inferencia_nome(caminho: Path) -> dict[str, Any] | None:
     """Bloco `resumo.inferencia_nome` do grafo existente, se houver (o `fks` não o recalcula)."""
+    return blocos_inferencia(caminho)[0]
+
+
+def blocos_inferencia(caminho: Path) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Blocos `resumo.inferencia_nome` e `resumo.inferencia_codigo` do grafo existente, se houver."""
     if not caminho.is_file():
-        return None
-    return ler_grafo_existente(caminho)["resumo"].get("inferencia_nome")
+        return None, None
+    resumo = ler_grafo_existente(caminho)["resumo"]
+    return resumo.get("inferencia_nome"), resumo.get("inferencia_codigo")
 
 
 def avisos_inferencia_obsoleta(grafo: dict[str, Any]) -> list[str]:
@@ -230,14 +242,17 @@ def avisos_inferencia_obsoleta(grafo: dict[str, Any]) -> list[str]:
 
 
 def montar_grafo(
-    fks: list[dict[str, Any]], outras: list[dict[str, Any]], inferencia_nome: dict[str, Any] | None = None
+    fks: list[dict[str, Any]],
+    outras: list[dict[str, Any]],
+    inferencia_nome: dict[str, Any] | None = None,
+    inferencia_codigo: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     arestas = sorted(fks + outras, key=lambda a: a["id"])
     ids = [a["id"] for a in arestas]
     if len(set(ids)) != len(ids):
         repetido = next(i for i in ids if ids.count(i) > 1)
         raise ErroRelacionamentos(f"id de aresta repetido: {repetido}")
-    return {"versao_formato": VERSAO_FORMATO, "arestas": arestas, "resumo": montar_resumo(arestas, inferencia_nome)}
+    return {"versao_formato": VERSAO_FORMATO, "arestas": arestas, "resumo": montar_resumo(arestas, inferencia_nome, inferencia_codigo)}
 
 
 def executar_fks(doc: Path) -> dict[str, Any]:
@@ -245,7 +260,7 @@ def executar_fks(doc: Path) -> dict[str, Any]:
     fks, relacoes = extrair_fks(estruturas)
     conferir_arestas(fks, relacoes, contar_fks_catalogo(estruturas))
     caminho = doc.joinpath(*SAIDA)
-    grafo = montar_grafo(fks, arestas_de_outras_fontes(caminho), bloco_inferencia_nome(caminho))
+    grafo = montar_grafo(fks, arestas_de_outras_fontes(caminho), *blocos_inferencia(caminho))
     validar(grafo)
     escrever_json(caminho, grafo)
     return grafo
@@ -262,6 +277,9 @@ def registrar(subparsers: argparse._SubParsersAction) -> None:  # type: ignore[t
     from pg_atlas import relacionamentos_nome  # import tardio: o módulo importa este
 
     relacionamentos_nome.registrar(etapas)
+    from pg_atlas import relacionamentos_codigo
+
+    relacionamentos_codigo.registrar(etapas)
 
 
 def executar(args: argparse.Namespace) -> int:

@@ -275,7 +275,7 @@ def executar_nome(doc: Path) -> dict[str, Any]:
         raise ErroRelacionamentos("O grafo não tem arestas fk_declarada. Rode 'relacionamentos fks' antes.")
     novas, bloco = inferir(estruturas, fks, coluna_de_tenant(doc))
     outras = [a for a in existente["arestas"] if a["fonte"] != FONTE_NOME]
-    grafo = montar_grafo(outras, novas, bloco)
+    grafo = montar_grafo(outras, novas, bloco, existente["resumo"].get("inferencia_codigo"))
     validar(grafo)
     escrever_json(caminho, grafo)
     return grafo

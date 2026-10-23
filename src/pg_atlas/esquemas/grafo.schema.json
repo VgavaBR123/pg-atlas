@@ -1,30 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "extremidade": {
-      "additionalProperties": false,
-      "properties": {
-        "colunas": {
-          "items": {
-            "type": "string"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "relacao": {
-          "type": "string"
-        },
-        "schema": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "colunas",
-        "relacao",
-        "schema"
-      ],
-      "type": "object"
-    },
     "aresta": {
       "additionalProperties": false,
       "properties": {
@@ -40,6 +16,64 @@
         },
         "evidencia": {
           "items": {
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "tipo": {
+                      "const": "inferencia_codigo"
+                    }
+                  },
+                  "required": [
+                    "tipo"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "chave_sem_tenant": {
+                      "type": "boolean"
+                    },
+                    "objetos": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "nome": {
+                            "type": "string"
+                          },
+                          "schema": {
+                            "type": "string"
+                          },
+                          "tipo": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "nome",
+                          "schema",
+                          "tipo"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 20,
+                      "type": "array"
+                    },
+                    "tipos_iguais": {
+                      "type": "boolean"
+                    },
+                    "total_objetos": {
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "chave_sem_tenant",
+                    "objetos",
+                    "tipos_iguais",
+                    "total_objetos"
+                  ]
+                }
+              }
+            ],
             "properties": {
               "tipo": {
                 "type": "string"
@@ -94,6 +128,30 @@
         "type": "integer"
       },
       "type": "object"
+    },
+    "extremidade": {
+      "additionalProperties": false,
+      "properties": {
+        "colunas": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "relacao": {
+          "type": "string"
+        },
+        "schema": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "colunas",
+        "relacao",
+        "schema"
+      ],
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -132,6 +190,117 @@
             "entre_schemas",
             "not_valid",
             "varias_colunas"
+          ],
+          "type": "object"
+        },
+        "inferencia_codigo": {
+          "additionalProperties": false,
+          "properties": {
+            "arestas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "autojuncao_trivial": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "coluna_inexistente": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "coluna_nao_qualificada": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "comandos_analisados": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "comandos_falhos": {
+              "$ref": "#/$defs/contagens"
+            },
+            "desempata_nome": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "execute_dinamico": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "extrator": {
+              "enum": [
+                "heuristico",
+                "pglast"
+              ]
+            },
+            "fallback_extracao": {
+              "$ref": "#/$defs/contagens"
+            },
+            "igualdades": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "lado_nao_relacao": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "lado_nao_resolvido": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "lado_view": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "objetos_analisados": {
+              "$ref": "#/$defs/contagens"
+            },
+            "objetos_fora": {
+              "$ref": "#/$defs/contagens"
+            },
+            "repetem_fk": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "repetem_nome": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "sem_chave": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "tenant_ignorada": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "um_para_um": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "arestas",
+            "autojuncao_trivial",
+            "coluna_inexistente",
+            "coluna_nao_qualificada",
+            "comandos_analisados",
+            "comandos_falhos",
+            "desempata_nome",
+            "execute_dinamico",
+            "extrator",
+            "fallback_extracao",
+            "igualdades",
+            "lado_nao_relacao",
+            "lado_nao_resolvido",
+            "lado_view",
+            "objetos_analisados",
+            "objetos_fora",
+            "repetem_fk",
+            "repetem_nome",
+            "sem_chave",
+            "tenant_ignorada",
+            "um_para_um"
           ],
           "type": "object"
         },
