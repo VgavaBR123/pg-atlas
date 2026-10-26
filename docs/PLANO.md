@@ -234,11 +234,11 @@ Gerado pelo comando `python -m pg_atlas relatorio catalogo --doc ../atlas-eldado
 ### O que construir
 
 1. **Pacote de contexto por lote** (sem LLM): para cada lote da fase 2, um arquivo `_controle/lotes/<id>.json` com a estrutura das tabelas, estatísticas de coluna permitidas, relacionamentos, views e functions que as usam, fatos conhecidos (`config/fatos.yml`) e valores das tabelas de domínio aprovadas.
-2. **Ordem:** lotes das tabelas `vazia` e `temporaria_ou_copia` recebem só uma linha de descrição e uma etiqueta, em tratamento leve. Os lotes restantes seguem por schema.
+2. **Ordem:** lotes das tabelas `vazia` e `temporaria_ou_copia` recebem só uma linha de descrição e uma etiqueta, em tratamento leve, com o `documentador` chamado em Haiku (parâmetro `model: haiku` na chamada do agente). Os lotes restantes seguem por schema, com o modelo padrão do agente.
 3. **Documentação:** o orquestrador dispara o agente `documentador`, um por lote, vários em paralelo (padrão 4). Ele preenche as seções de significado das fichas (propósito, descrição das colunas, granularidade, armadilhas, consultas típicas) e marca cada afirmação com a confiança.
 4. **Hipóteses verificáveis:** quando o documentador quer confirmar algo, escreve a pergunta como SQL de agregado em `_controle/verificacoes/pendentes/`. O `pg_atlas verificar fila` executa sob as regras de segurança e devolve o resultado (contagem, taxa) em `_controle/verificacoes/respondidas/`.
 5. **Revisão:** o agente `revisor` (que não escreveu o lote) confere a ficha contra o catálogo e o pacote. Depois, o `pg_atlas verificar fichas` faz a checagem mecânica: toda tabela e coluna citada existe.
-6. **Reprovação:** volta ao documentador com a lista de problemas, no máximo duas vezes. Depois disso, o item vai para `duvidas.md` e o lote é concluído com o que foi aprovado.
+6. **Reprovação:** volta ao documentador com a lista de problemas, no máximo uma vez. Depois disso, o item vai para `duvidas.md` e o lote é concluído com o que foi aprovado.
 
 ### Critérios de aceite
 
