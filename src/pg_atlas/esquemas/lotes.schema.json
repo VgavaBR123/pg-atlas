@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "lotes": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "arestas_externas": {"minimum": 0, "type": "integer"},
+          "arestas_internas": {"minimum": 0, "type": "integer"},
+          "classe_leve": {"enum": ["temporaria_ou_copia", "vazia", null]},
+          "comunidades": {"minimum": 0, "type": "integer"},
+          "id": {"minLength": 1, "type": "string"},
+          "por_classe": {"additionalProperties": {"minimum": 1, "type": "integer"}, "type": "object"},
+          "schemas": {"items": {"type": "string"}, "minItems": 1, "type": "array"},
+          "tabelas": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "classe": {"type": "string"},
+                "nome": {"type": "string"},
+                "particao_de": {"type": ["string", "null"]},
+                "schema": {"type": "string"}
+              },
+              "required": ["schema", "nome", "classe"],
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "tipo": {"enum": ["grafo", "leve"]},
+          "total_tabelas": {"minimum": 1, "type": "integer"}
+        },
+        "required": [
+          "arestas_externas", "arestas_internas", "classe_leve", "comunidades", "id", "por_classe",
+          "schemas", "tabelas", "tipo", "total_tabelas"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "parametros": {
+      "additionalProperties": false,
+      "properties": {
+        "algoritmo": {"type": "string"},
+        "confiancas_usadas": {"items": {"type": "string"}, "type": "array"},
+        "iteracoes_max": {"minimum": 1, "type": "integer"},
+        "max_tabelas": {"minimum": 1, "type": "integer"},
+        "max_tabelas_leve": {"minimum": 1, "type": "integer"},
+        "pesos": {"additionalProperties": {"minimum": 1, "type": "integer"}, "type": "object"}
+      },
+      "required": ["algoritmo", "confiancas_usadas", "iteracoes_max", "max_tabelas", "max_tabelas_leve", "pesos"],
+      "type": "object"
+    },
+    "resumo": {
+      "additionalProperties": false,
+      "properties": {
+        "arestas": {
+          "additionalProperties": false,
+          "properties": {
+            "autorreferencia": {"minimum": 0, "type": "integer"},
+            "com_tabela_leve": {"minimum": 0, "type": "integer"},
+            "fora_da_triagem": {"minimum": 0, "type": "integer"},
+            "usadas": {"minimum": 0, "type": "integer"},
+            "usadas_por_confianca": {"additionalProperties": {"type": "integer"}, "type": "object"}
+          },
+          "required": ["autorreferencia", "com_tabela_leve", "fora_da_triagem", "usadas", "usadas_por_confianca"],
+          "type": "object"
+        },
+        "componentes": {
+          "additionalProperties": false,
+          "properties": {
+            "isolados": {"minimum": 0, "type": "integer"},
+            "maior": {"minimum": 0, "type": "integer"},
+            "total": {"minimum": 0, "type": "integer"}
+          },
+          "required": ["isolados", "maior", "total"],
+          "type": "object"
+        },
+        "lotes_grafo": {"minimum": 0, "type": "integer"},
+        "lotes_leves": {"minimum": 0, "type": "integer"},
+        "tabelas_por_classe": {"additionalProperties": {"type": "integer"}, "type": "object"},
+        "tabelas_total": {"minimum": 0, "type": "integer"},
+        "tamanhos": {
+          "additionalProperties": {
+            "additionalProperties": false,
+            "properties": {
+              "lotes": {"minimum": 0, "type": "integer"},
+              "maximo": {"minimum": 0, "type": "integer"},
+              "mediana": {"minimum": 0, "type": "number"},
+              "minimo": {"minimum": 0, "type": "integer"}
+            },
+            "required": ["lotes", "maximo", "mediana", "minimo"],
+            "type": "object"
+          },
+          "type": "object"
+        },
+        "total_lotes": {"minimum": 0, "type": "integer"}
+      },
+      "required": [
+        "arestas", "componentes", "lotes_grafo", "lotes_leves", "tabelas_por_classe", "tabelas_total",
+        "tamanhos", "total_lotes"
+      ],
+      "type": "object"
+    },
+    "versao_formato": {"const": 1}
+  },
+  "required": ["lotes", "parametros", "resumo", "versao_formato"],
+  "type": "object"
+}

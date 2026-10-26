@@ -382,11 +382,12 @@ def _linha_tempo(
     return (rotulo, _instante(inicio), fim_txt, _duracao(inicio, fim), _horas_consumo(balde))
 
 
-def secao_tempo(e: Entradas) -> str:
-    da_fase = [m for m in e.marcas if m["fase"] == FASE]
-    fase_consumo = (e.consumo.get("fases") or {}).get(str(FASE)) or {}
+def secao_tempo(e: Entradas, fase: int = FASE, com_extracao: bool = True) -> str:
+    """Tempo de relógio da fase; `com_extracao` acrescenta a nota sobre o catálogo (só fase 1)."""
+    da_fase = [m for m in e.marcas if m["fase"] == fase]
+    fase_consumo = (e.consumo.get("fases") or {}).get(str(fase)) or {}
     tarefas_consumo = fase_consumo.get("tarefas") or {}
-    linhas = [_linha_tempo(f"Fase {FASE}", [m for m in da_fase if m["tarefa"] is None] or da_fase, fase_consumo, da_fase)]
+    linhas = [_linha_tempo(f"Fase {fase}", [m for m in da_fase if m["tarefa"] is None] or da_fase, fase_consumo, da_fase)]
     tarefas = sorted({m["tarefa"] for m in da_fase if m["tarefa"]}, key=_chave_tarefa)
     for t in tarefas:
         linhas.append(_linha_tempo(f"Tarefa {t}", [m for m in da_fase if m["tarefa"] == t], tarefas_consumo.get(t)))
@@ -401,7 +402,11 @@ def secao_tempo(e: Entradas) -> str:
             "",
             tabela(["Item", "Início", "Fim", "Tempo de relógio", "Horas de execução"], linhas),
             "",
-            f"Tempo da extração do catálogo: não registrado (o catálogo guarda só o instante final: {extraido}).",
+            *(
+                [f"Tempo da extração do catálogo: não registrado (o catálogo guarda só o instante final: {extraido})."]
+                if com_extracao
+                else []
+            ),
         ]
     )
 
@@ -413,8 +418,8 @@ def _chave_tarefa(tarefa: str) -> tuple[int, ...]:
 # --------------------------------------------------------------------------- custo
 
 
-def secao_custo(e: Entradas) -> str:
-    balde = (e.consumo.get("fases") or {}).get(str(FASE)) or {}
+def secao_custo(e: Entradas, fase: int = FASE) -> str:
+    balde = (e.consumo.get("fases") or {}).get(str(fase)) or {}
     modelos: dict[str, dict[str, int]] = balde.get("modelos") or {}
     linhas = []
     for modelo in sorted(modelos):
@@ -435,9 +440,9 @@ def secao_custo(e: Entradas) -> str:
     )
     periodo = (e.consumo.get("periodo") or {}).get("fim") or custos.NAO_INFORMADO
     premissas = [
-        f"- Consumo coletado até {periodo} (`custos coletar`); inclui só o que foi atribuído à fase {FASE} pelas marcas.",
+        f"- Consumo coletado até {periodo} (`custos coletar`); inclui só o que foi atribuído à fase {fase} pelas marcas.",
         "- Custo equivalente em API: tokens × preços de `config/precos.yml`. Não é o valor pago.",
-        "- Relatório parcial completo, com as tarefas: `relatorios/custo-parcial-fase-1.md`.",
+        f"- Relatório parcial completo, com as tarefas: `relatorios/custo-parcial-fase-{fase}.md`.",
     ]
     sem_preco = sorted(m for m, t in modelos.items() if custos.custo_usd(m, t, e.precos) is None)
     if sem_preco:
@@ -506,6 +511,9 @@ def gerar_relatorio(doc: Path, nome_projeto: str) -> str:
 def registrar(subparsers: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
     parser = subparsers.add_parser("relatorio", help="relatórios de fase (catálogo), sem conectar ao banco")
     alvos = parser.add_subparsers(dest="alvo", metavar="alvo", required=True)
+    from pg_atlas import relatorio_relacionamentos  # import tardio: o módulo importa este
+
+    relatorio_relacionamentos.registrar(alvos)
     catalogo_parser = alvos.add_parser("catalogo", help="gera relatorios/fase-1-catalogo.md a partir dos arquivos da fase 1")
     adicionar_argumentos_comuns(catalogo_parser)
     catalogo_parser.set_defaults(func=executar)

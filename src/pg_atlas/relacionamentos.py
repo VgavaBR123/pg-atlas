@@ -1,6 +1,7 @@
 """Comando `relacionamentos <etapa>`: grafo de relacionamentos entre tabelas (decisão D-016).
 
 Etapa `nome`: ver `relacionamentos_nome.py` (D-017). Etapa `codigo`: ver `relacionamentos_codigo.py` (D-018).
+Etapa `agrupar`: ver `relacionamentos_agrupar.py` (D-022).
 
 Etapa `fks`: FKs declaradas, direto do catálogo, confiança `declarado`. Não conecta ao banco;
 lê só `<doc>/catalogo/estrutura/*.json` (já mascarado) e grava `<doc>/relacionamentos/grafo.json`
@@ -322,6 +323,9 @@ def registrar(subparsers: argparse._SubParsersAction) -> None:  # type: ignore[t
 
     relacionamentos_lotes.registrar(etapas)
     relacionamentos_resolver.registrar(etapas)
+    from pg_atlas import relacionamentos_agrupar
+
+    relacionamentos_agrupar.registrar(etapas)
 
 
 def executar(args: argparse.Namespace) -> int:
