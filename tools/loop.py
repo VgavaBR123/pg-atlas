@@ -240,13 +240,35 @@ def proxima_tarefa(estado: Mapping[str, Any]) -> Tarefa | None:
     return None
 
 
+def _campos_de_progresso(prefixo: str, dados: Mapping[str, Any]) -> dict[str, str]:
+    """Campos numéricos (valor) e coleções (tamanho) de um item; texto e bool ficam fora."""
+    campos: dict[str, str] = {}
+    for campo, valor in dados.items():
+        if isinstance(valor, bool):
+            continue
+        if isinstance(valor, int | float):
+            campos[f"{prefixo}.{campo}"] = str(valor)
+        elif isinstance(valor, list | dict):
+            campos[f"{prefixo}.{campo}"] = str(len(valor))
+    return campos
+
+
 def resumo_estado(estado: Mapping[str, Any]) -> dict[str, str]:
-    """Status de cada fase e de cada tarefa, para comparar antes e depois de uma volta."""
+    """Resumo do progresso de cada fase e tarefa, para comparar antes e depois de uma volta.
+
+    Inclui o status e todos os campos numéricos (inteiro ou float, exceto bool) como
+    `fase:<f>.<campo>` / `tarefa:<t>.<campo>` -> `str(valor)`; campos de lista ou dict entram
+    pelo tamanho (`len`). Assim, uma tarefa que segue `em_andamento` mas avança um contador
+    (ex.: lotes documentados) ou ganha itens numa lista conta como avanço. Campos de texto
+    (observação, descrição) ficam de fora: reescrevê-los não é avanço.
+    """
     resumo: dict[str, str] = {}
     for chave_fase, fase in (estado.get("fases") or {}).items():
         resumo[f"fase:{chave_fase}"] = str(fase.get("status"))
+        resumo.update(_campos_de_progresso(f"fase:{chave_fase}", fase))
         for chave, t in (fase.get("tarefas") or {}).items():
             resumo[f"tarefa:{chave}"] = str(t.get("status"))
+            resumo.update(_campos_de_progresso(f"tarefa:{chave}", t))
     return resumo
 
 

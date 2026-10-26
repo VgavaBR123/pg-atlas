@@ -22,7 +22,7 @@ A cada volta:
 4. Chama `claude -p` com o prompt fixo de continuação (abaixo), as permissões de `.claude/settings.json` e saída em JSON.
 5. Registra o resultado da volta em `_controle/loop.log` (início, fim, tarefa, status).
 6. Se a saída indicar limite de uso da conta, espera até o horário de liberação informado (ou 30 minutos, se não houver horário) e tenta de novo. O script só usa a API quando o dono passa `--executor sdk` explicitamente (requer `ANTHROPIC_API_KEY` no ambiente); ele nunca decide isso sozinho, nem ao atingir o limite (ver gate G4).
-7. Se três voltas seguidas terminarem sem avanço no `estado.json`, para e registra a pendência G5.
+7. Se três voltas seguidas terminarem sem avanço no `estado.json` (mudança de status ou de qualquer campo numérico ou tamanho de lista de fase ou tarefa, como contadores de lotes), para e registra a pendência G5.
 8. Limite de segurança: no máximo 500 voltas por execução (configurável).
 
 Prompt fixo de continuação:

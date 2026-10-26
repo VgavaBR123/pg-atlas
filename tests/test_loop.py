@@ -825,3 +825,41 @@ def test_log_cli_sem_uso_tem_chaves_nulas(amb: Ambiente) -> None:
     for k in ("modelo", "tokens_entrada", "tokens_saida", "tokens_cache_leitura"):
         assert linha[k] is None
     assert linha["tokens_cache_escrita"] is None
+
+
+# ------------------------------------------------------------------ medida de avanço
+
+
+def _estado_tarefa(**campos: object) -> dict:
+    tarefa = {"status": "em_andamento", "descricao": "doc", "observacao": "a", **campos}
+    return {"fases": {"3": {"status": "em_andamento", "tarefas": {"3.3": tarefa}}}}
+
+
+def test_avanco_por_contador_numerico() -> None:
+    antes = loop.resumo_estado(_estado_tarefa(lotes_documentados=4))
+    depois = loop.resumo_estado(_estado_tarefa(lotes_documentados=8))
+    assert loop.houve_avanco(antes, depois)
+
+
+def test_avanco_por_lista_que_cresce() -> None:
+    antes = loop.resumo_estado(_estado_tarefa(lotes_aprovados=["a"]))
+    depois = loop.resumo_estado(_estado_tarefa(lotes_aprovados=["a", "b"]))
+    assert loop.houve_avanco(antes, depois)
+
+
+def test_reescrever_observacao_nao_e_avanco() -> None:
+    antes = loop.resumo_estado(_estado_tarefa(lotes_documentados=4))
+    depois = loop.resumo_estado(_estado_tarefa(lotes_documentados=4, observacao="outra"))
+    assert not loop.houve_avanco(antes, depois)
+
+
+def test_nada_mudou_sem_avanco() -> None:
+    estado = _estado_tarefa(lotes_documentados=4, lotes_aprovados=["a"], ok=True)
+    assert not loop.houve_avanco(loop.resumo_estado(estado), loop.resumo_estado(estado))
+
+
+def test_mudanca_de_status_continua_sendo_avanco() -> None:
+    antes = loop.resumo_estado(_estado_tarefa())
+    depois_estado = _estado_tarefa()
+    depois_estado["fases"]["3"]["tarefas"]["3.3"]["status"] = "concluida"
+    assert loop.houve_avanco(antes, loop.resumo_estado(depois_estado))
