@@ -44,6 +44,7 @@ from pg_atlas.relacionamentos import (
     SAIDA,
     ErroRelacionamentos,
     carregar_estruturas,
+    avisar_analise_obsoleta,
     avisar_verificacao_obsoleta,
     ler_grafo_existente,
     montar_grafo,
@@ -301,6 +302,7 @@ def executar_codigo(doc: Path, forcar_heuristico: bool = False) -> dict[str, Any
     if not any(a["fonte"] == FONTE_FK for a in existente["arestas"]):
         raise ErroRelacionamentos("O grafo não tem arestas fk_declarada. Rode 'relacionamentos fks' antes.")
     avisar_verificacao_obsoleta(existente["resumo"])
+    avisar_analise_obsoleta(existente["resumo"])
     novas, bloco, itens = inferir(estruturas, existente["arestas"], coluna_de_tenant(doc), forcar_heuristico)
     outras = [a for a in existente["arestas"] if a["fonte"] != FONTE_CODIGO]
     grafo = montar_grafo(outras, novas, existente["resumo"].get("inferencia_nome"), bloco)

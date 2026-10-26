@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "aresta": {
       "additionalProperties": false,
@@ -119,6 +118,59 @@
                     }
                   }
                 }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "tipo": {
+                      "const": "analise"
+                    }
+                  },
+                  "required": [
+                    "tipo"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "confianca_anterior": {
+                      "enum": [
+                        "confirmado",
+                        "declarado",
+                        "hipotese"
+                      ]
+                    },
+                    "escolhido": {
+                      "type": "string"
+                    },
+                    "justificativa": {
+                      "maxLength": 300,
+                      "type": "string"
+                    },
+                    "lote": {
+                      "type": "string"
+                    },
+                    "nota_anterior": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "resultado": {
+                      "enum": [
+                        "duvida",
+                        "escolhido",
+                        "preterido",
+                        "sem_evidencia"
+                      ]
+                    },
+                    "verificacao": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "resultado"
+                  ]
+                }
               }
             ],
             "properties": {
@@ -201,6 +253,7 @@
       "type": "object"
     }
   },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
     "arestas": {
@@ -212,6 +265,97 @@
     "resumo": {
       "additionalProperties": false,
       "properties": {
+        "analise": {
+          "additionalProperties": false,
+          "properties": {
+            "arestas_descartadas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "arestas_preteridas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "colunas_fila": {
+              "additionalProperties": false,
+              "properties": {
+                "p1": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "p2": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "p3": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "p1",
+                "p2",
+                "p3"
+              ],
+              "type": "object"
+            },
+            "descarte_convertido": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "duvidas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "escolhidas": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "grau_ajustado": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "itens_rejeitados": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "lotes": {
+              "additionalProperties": false,
+              "properties": {
+                "gerados": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "resolvidos": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "gerados",
+                "resolvidos"
+              ],
+              "type": "object"
+            },
+            "sem_evidencia": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "arestas_descartadas",
+            "arestas_preteridas",
+            "colunas_fila",
+            "descarte_convertido",
+            "duvidas",
+            "escolhidas",
+            "grau_ajustado",
+            "itens_rejeitados",
+            "lotes",
+            "sem_evidencia"
+          ],
+          "type": "object"
+        },
         "fk_declarada": {
           "additionalProperties": false,
           "properties": {

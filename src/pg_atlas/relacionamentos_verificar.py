@@ -33,6 +33,7 @@ from pg_atlas.json_util import escrever_json
 from pg_atlas.relacionamentos import (
     SAIDA,
     ErroRelacionamentos,
+    avisar_analise_obsoleta,
     carregar_estruturas,
     ler_grafo_existente,
     montar_grafo,
@@ -318,6 +319,7 @@ def aplicar_ao_grafo(doc: Path, projeto: Projeto) -> dict[str, Any]:
     cache = carregar_cache(doc.joinpath(*SAIDA_CACHE))
     arestas, bloco = aplicar_cache(existente["arestas"], cache, limiares_do_projeto(projeto))
     resumo = existente["resumo"]
+    avisar_analise_obsoleta(resumo)
     grafo = montar_grafo(arestas, [], resumo.get("inferencia_nome"), resumo.get("inferencia_codigo"), bloco)
     validar(grafo)
     escrever_json(caminho, grafo)

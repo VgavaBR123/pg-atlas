@@ -13,7 +13,7 @@ import copy
 from collections import Counter
 from typing import Any
 
-from pg_atlas.relacionamentos import FONTE_FK
+from pg_atlas.relacionamentos import FONTE_FK, TIPO_ANALISE
 from pg_atlas.relacionamentos_codigo import FONTE_CODIGO
 from pg_atlas.relacionamentos_nome import FONTE_NOME, TETO_DESTINOS
 from pg_atlas.verificar_amostragem import VERSAO_METODO, Chave, Limiares
@@ -69,6 +69,10 @@ def texto_ambiguo(total: int) -> str:
 def restaurar_base(a: dict[str, Any]) -> dict[str, Any]:
     """Cópia da aresta no estado anterior à verificação."""
     b = copy.deepcopy(a)
+    for e in b["evidencia"]:  # a análise (D-021) é desfeita: nota anterior de volta e evidência removida
+        if e.get("tipo") == TIPO_ANALISE and "nota_anterior" in e:
+            b["nota"] = e["nota_anterior"]
+    b["evidencia"] = [e for e in b["evidencia"] if e.get("tipo") != TIPO_ANALISE]
     b["taxa_casamento"] = None
     b["evidencia"] = [e for e in b["evidencia"] if e.get("tipo") != TIPO_AMOSTRAGEM]
     segmentos = [s for s in _segmentos(b["nota"]) if not s.startswith(PREFIXOS_VERIFICACAO)]

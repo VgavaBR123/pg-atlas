@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "coluna": {
+      "additionalProperties": false,
+      "properties": {
+        "coluna": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "destinos": {
+          "items": {
+            "$ref": "#/$defs/destino"
+          },
+          "type": "array"
+        },
+        "justificativa": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "resultado": {
+          "enum": [
+            "duvida",
+            "escolhido"
+          ]
+        },
+        "verificacao": {
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "coluna",
+        "justificativa",
+        "resultado"
+      ],
+      "type": "object"
+    },
+    "destino": {
+      "additionalProperties": false,
+      "properties": {
+        "acao": {
+          "enum": [
+            "descartado",
+            "escolhido",
+            "preterido"
+          ]
+        },
+        "aresta": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "grau": {
+          "enum": [
+            "confirmado",
+            "hipotese"
+          ]
+        },
+        "justificativa": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "acao",
+        "aresta",
+        "justificativa"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "relacionamentos-resolvido",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "colunas": {
+      "items": {
+        "$ref": "#/$defs/coluna"
+      },
+      "type": "array"
+    },
+    "formato": {
+      "const": "relacionamentos_resolvido"
+    },
+    "lote": {
+      "pattern": "^p[12]-[0-9]{3,}$",
+      "type": "string"
+    },
+    "versao_formato": {
+      "const": 1
+    }
+  },
+  "required": [
+    "colunas",
+    "formato",
+    "lote",
+    "versao_formato"
+  ],
+  "title": "Resolução de um lote de relacionamentos ambíguos (D-021)",
+  "type": "object"
+}
