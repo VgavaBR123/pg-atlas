@@ -18,6 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+sdk = ["claude-agent-sdk>=0.2.174"]   # opcional: `--executor sdk` do tools/loop.py
 pglast = ["pglast>=6.0"]   # opcional: pode não instalar no Windows (fase 4)
 
 [project.scripts]

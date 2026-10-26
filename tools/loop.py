@@ -18,13 +18,23 @@ Flags usadas (conferidas com `claude --help`):
     --permission-prompts none       nada que pediria aprovação é aprovado: é negado
     --permission-mode <modo>        configurável por --modo-permissao (padrão: auto).
                                     Nunca bypassPermissions nem --dangerously-skip-permissions.
+    --model <modelo>                só se `--modelo` for informado.
+
+Executores (`--executor`):
+- `cli` (padrão): o subprocesso `claude -p` acima, que usa a assinatura da conta;
+- `sdk`: o Claude Agent SDK (`pip install pg-atlas[sdk]`), que usa a chave `ANTHROPIC_API_KEY`
+  do ambiente e cobra os créditos da API. O resultado é convertido para o mesmo JSON do
+  `claude -p`, então o resto do laço não muda. Qualquer pedido de permissão é negado
+  (equivalente a `--permission-prompts none`).
 
 O processo roda com cwd no workspace, para que o `.claude/settings.json` do projeto valha.
 
 Regras de segurança deste script:
 - nunca lê nem imprime valores do `.env`: usa só `pg_atlas.conexao.verificar_credenciais`,
   que apenas testa se as variáveis estão preenchidas;
-- nunca troca para a API quando o limite de uso da conta é atingido (gate G4);
+- só usa a API quando o dono passa `--executor sdk` explicitamente; o loop nunca decide isso
+  sozinho, nem ao atingir o limite de uso da conta (gate G4);
+- nunca lê nem imprime o valor de `ANTHROPIC_API_KEY`: só confere se a variável existe;
 - do texto da resposta do Claude grava no máximo 300 caracteres, no `loop.log`.
 
 Modo `--simular`: mostra a próxima tarefa e o comando que seria executado, sem chamar o
@@ -36,6 +46,7 @@ Para encerrar o loop, crie o arquivo `PARAR` na pasta de trabalho.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
 import re
@@ -44,7 +55,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -112,6 +123,8 @@ class Config:
     timeout_s: int = TIMEOUT_PADRAO_S
     claude: str = "claude"
     python: str = sys.executable
+    executor: str = "cli"
+    modelo: str | None = None
 
     @property
     def controle(self) -> Path:
@@ -147,6 +160,9 @@ class Dependencias:
     """Tudo que toca o mundo externo, para os testes injetarem versões falsas."""
 
     executor: Executor
+    executor_sdk: Callable[..., ResultadoProcesso] = field(
+        default_factory=lambda: executar_via_sdk
+    )
     dormir: Callable[[float], None] = time.sleep
     agora: Callable[[], datetime] = _agora_local
     env_ok: Callable[[Path], bool] | None = None
@@ -342,7 +358,7 @@ GATES = {
     "G4": (
         "Limite de uso da conta atingido {n} vezes seguidas. O loop segue esperando a "
         "liberação e não usa a API.",
-        "Decidir se autoriza o uso da API (com teto). Sem decisão, nada muda: o loop continua "
+        "Decidir se autoriza o uso da API (com teto) e, se sim, reiniciar o loop com --executor sdk. Sem decisão, nada muda: o loop continua "
         "esperando.",
         "O loop espera a liberação do limite e continua sozinho.",
     ),
@@ -417,7 +433,7 @@ def montar_linha_log(
 
 def montar_comando(config: Config) -> list[str]:
     """Comando do Claude Code. O prompt NÃO entra aqui: vai pela entrada padrão."""
-    return [
+    comando = [
         config.claude,
         "-p",
         "--output-format",
@@ -427,6 +443,9 @@ def montar_comando(config: Config) -> list[str]:
         "--permission-mode",
         config.modo_permissao,
     ]
+    if config.modelo:
+        comando += ["--model", config.modelo]
+    return comando
 
 
 # ----------------------------------------------------------------- efeitos: arquivos e processos
@@ -479,6 +498,103 @@ def executar_processo(
     except OSError as e:
         return ResultadoProcesso(127, "", f"falha ao executar {comando[0]}: {e}")
     return ResultadoProcesso(r.returncode, r.stdout or "", r.stderr or "")
+
+
+# ----------------------------------------------------------------- executor pelo SDK
+
+MAX_ERRO_SDK = 300
+
+
+async def _negar_permissao(nome: str, entrada: dict[str, Any], contexto: Any) -> Any:
+    """`can_use_tool`: nega sempre (equivale a `--permission-prompts none` do CLI)."""
+    from claude_agent_sdk import PermissionResultDeny
+
+    return PermissionResultDeny(
+        message="Modo não interativo do loop: pedidos de permissão são negados.", interrupt=False
+    )
+
+
+def resultado_para_dict(msg: Any) -> dict[str, Any]:
+    """Converte a `ResultMessage` do SDK nas chaves do `claude -p --output-format json`."""
+    texto = getattr(msg, "result", None)
+    if not texto and getattr(msg, "errors", None):
+        texto = "; ".join(str(e) for e in msg.errors)
+    return {
+        "duration_ms": getattr(msg, "duration_ms", None),
+        "is_error": bool(getattr(msg, "is_error", False)),
+        "num_turns": getattr(msg, "num_turns", None),
+        "result": texto,
+        "session_id": getattr(msg, "session_id", None),
+        "subtype": getattr(msg, "subtype", None),
+        "total_cost_usd": getattr(msg, "total_cost_usd", None),
+        "usage": getattr(msg, "usage", None),
+    }
+
+
+def _versao_pg_atlas() -> str:
+    _garantir_pacote()
+    try:
+        from pg_atlas import __version__
+
+        return str(__version__)
+    except ImportError:
+        return "desconhecida"
+
+
+async def _consumir_sdk(query: Callable[..., Any], prompt: str, options: Any) -> Any:
+    """Percorre as mensagens do `query()` e devolve a última `ResultMessage` (ou None)."""
+    final = None
+    async for msg in query(prompt=prompt, options=options):
+        if type(msg).__name__ == "ResultMessage":
+            final = msg
+    return final
+
+
+def executar_via_sdk(
+    prompt: str,
+    *,
+    cwd: Path,
+    timeout: float | None,
+    modo_permissao: str,
+    modelo: str | None = None,
+    query: Callable[..., Any] | None = None,
+) -> ResultadoProcesso:
+    """Uma volta pelo Claude Agent SDK, com a saída no formato JSON do `claude -p`.
+
+    `query` é injetável para os testes. O import do SDK é tardio: o executor `cli` não
+    precisa do pacote instalado.
+    """
+    try:
+        from claude_agent_sdk import ClaudeAgentOptions
+        from claude_agent_sdk import query as query_real
+    except ImportError as e:
+        return ResultadoProcesso(
+            127, "", f"claude-agent-sdk não instalado (pip install pg-atlas[sdk]): {e}"
+        )
+    opcoes = ClaudeAgentOptions(
+        cwd=str(cwd),
+        permission_mode=modo_permissao,
+        setting_sources=["user", "project", "local"],
+        model=modelo,
+        env={"CLAUDE_AGENT_SDK_CLIENT_APP": f"pg-atlas-loop/{_versao_pg_atlas()}"},
+        can_use_tool=_negar_permissao,
+    )
+
+    async def rodar() -> Any:
+        return await asyncio.wait_for(
+            _consumir_sdk(query or query_real, prompt, opcoes), timeout=timeout
+        )
+
+    try:
+        final = asyncio.run(rodar())
+    except (TimeoutError, asyncio.TimeoutError):
+        return ResultadoProcesso(124, "", "tempo esgotado na volta (SDK)", estourou_tempo=True)
+    except Exception as e:  # noqa: BLE001 - qualquer falha do SDK vira resultado de volta
+        mensagem = " ".join(f"{type(e).__name__}: {e}".split())[:MAX_ERRO_SDK]
+        return ResultadoProcesso(1, "", mensagem)
+    if final is None:
+        return ResultadoProcesso(1, "", "o SDK terminou sem devolver ResultMessage")
+    return ResultadoProcesso(0, json.dumps(resultado_para_dict(final), sort_keys=True), "")
 
 
 def ler_estado(config: Config) -> dict[str, Any]:
@@ -560,8 +676,14 @@ def executar_loop(config: Config, deps: Dependencias) -> str:
     """Roda o laço externo. Devolve o motivo do encerramento.
 
     Motivos: `parar`, `concluido`, `max_voltas`, `sem_avanco` (G5), `sem_tarefa`,
-    `estado_invalido`.
+    `estado_invalido`, `sem_chave_api` (executor sdk sem `ANTHROPIC_API_KEY`).
     """
+    if config.executor == "sdk" and "ANTHROPIC_API_KEY" not in os.environ:
+        deps.imprimir(
+            "Executor sdk exige ANTHROPIC_API_KEY no ambiente (o valor não é lido nem exibido): "
+            "encerrando."
+        )
+        return "sem_chave_api"
     voltas = 0
     limites_seguidos = 0
     sem_avanco = 0
@@ -626,13 +748,22 @@ def executar_loop(config: Config, deps: Dependencias) -> str:
         chamar_custos(
             config, deps, ["marcar-inicio", "--fase", tarefa.fase, "--tarefa", tarefa.id], avisos
         )
-        r = deps.executor(
-            montar_comando(config),
-            cwd=config.workspace,
-            entrada=PROMPT_CONTINUACAO,
-            timeout=config.timeout_s,
-            env=None,
-        )
+        if config.executor == "sdk":
+            r = deps.executor_sdk(
+                PROMPT_CONTINUACAO,
+                cwd=config.workspace,
+                timeout=config.timeout_s,
+                modo_permissao=config.modo_permissao,
+                modelo=config.modelo,
+            )
+        else:
+            r = deps.executor(
+                montar_comando(config),
+                cwd=config.workspace,
+                entrada=PROMPT_CONTINUACAO,
+                timeout=config.timeout_s,
+                env=None,
+            )
         fim = deps.agora()
         chamar_custos(
             config, deps, ["marcar-fim", "--fase", tarefa.fase, "--tarefa", tarefa.id], avisos
@@ -720,6 +851,9 @@ def simular(config: Config, deps: Dependencias) -> int:
     p = deps.imprimir
     p(f"Workspace: {config.workspace}")
     p(f"Documentação: {config.doc}")
+    p(f"Executor: {config.executor}" + (f" (modelo {config.modelo})" if config.modelo else ""))
+    if config.executor == "sdk" and "ANTHROPIC_API_KEY" not in os.environ:
+        p("Aviso: ANTHROPIC_API_KEY não está no ambiente; o loop encerraria ao iniciar.")
     if config.parar.exists():
         p("Arquivo PARAR existe: o loop encerraria agora.")
         return 0
@@ -740,8 +874,12 @@ def simular(config: Config, deps: Dependencias) -> int:
     if tarefa.depende_banco and not deps.env_preenchido(config.workspace):
         p(".env ausente ou incompleto: o loop esperaria 10 minutos e voltaria ao passo 1.")
     else:
-        p("Comando (o prompt vai pela entrada padrão):")
-        p("  " + " ".join(montar_comando(config)))
+        if config.executor == "sdk":
+            p("Chamada ao Claude Agent SDK (permissões sempre negadas; o prompt vai por query()):")
+            p(f"  permission_mode={config.modo_permissao}  model={config.modelo or 'padrão'}")
+        else:
+            p("Comando (o prompt vai pela entrada padrão):")
+            p("  " + " ".join(montar_comando(config)))
         p(f"  cwd={config.workspace}  timeout={config.timeout_s}s")
         p("Prompt de continuação:")
         for linha in PROMPT_CONTINUACAO.splitlines():
@@ -785,6 +923,16 @@ def criar_parser() -> argparse.ArgumentParser:
         "bypassPermissions não é aceito)",
     )
     ap.add_argument(
+        "--executor",
+        default="cli",
+        choices=["cli", "sdk"],
+        help="cli: `claude -p` pela assinatura (padrão); sdk: Claude Agent SDK pela API, "
+        "exige ANTHROPIC_API_KEY no ambiente",
+    )
+    ap.add_argument(
+        "--modelo", default=None, help="alias ou id do modelo (--model no CLI; model= no SDK)"
+    )
+    ap.add_argument(
         "--timeout-h",
         type=float,
         default=TIMEOUT_PADRAO_S / 3600,
@@ -815,13 +963,15 @@ def main(argv: list[str] | None = None) -> int:
         modo_permissao=args.modo_permissao,
         timeout_s=int(args.timeout_h * 3600),
         claude=shutil.which("claude") or "claude",
+        executor=args.executor,
+        modelo=args.modelo,
     )
     deps = Dependencias(executor=executar_processo)
     if args.simular:
         return simular(config, deps)
     motivo = executar_loop(config, deps)
     deps.imprimir(f"Encerrado: {motivo}.")
-    return 1 if motivo in ("sem_avanco", "sem_tarefa", "estado_invalido") else 0
+    return 1 if motivo in ("sem_avanco", "sem_tarefa", "estado_invalido", "sem_chave_api") else 0
 
 
 if __name__ == "__main__":

@@ -527,3 +527,177 @@ def test_doc_padrao(tmp_path: Path) -> None:
     outro.mkdir(parents=True)
     (outro / "estado.json").write_text("{}", encoding="utf-8")
     assert loop.doc_padrao(tmp_path) == tmp_path / "meu-banco"
+
+
+# ------------------------------------------------------------------ executor pelo SDK
+
+
+class ResultMessage:  # o nome da classe importa: o executor reconhece pelo tipo
+    def __init__(self, **kw) -> None:
+        base = dict(
+            subtype="success",
+            duration_ms=1200,
+            duration_api_ms=900,
+            is_error=False,
+            num_turns=7,
+            session_id="sessao-1",
+            total_cost_usd=0.42,
+            usage={"input_tokens": 10, "output_tokens": 5},
+            result="feito",
+        )
+        base.update(kw)
+        self.__dict__.update(base)
+
+
+def query_falsa(*mensagens, depois=None):
+    capturado: dict = {}
+
+    async def query(*, prompt, options):
+        capturado["prompt"] = prompt
+        capturado["options"] = options
+        for m in mensagens:
+            yield m
+        if depois:
+            await depois()
+
+    return query, capturado
+
+
+def sdk(query, **kw):
+    kw.setdefault("timeout", 5)
+    return loop.executar_via_sdk("oi", cwd=Path("."), modo_permissao="auto", query=query, **kw)
+
+
+def test_sdk_converte_resultado_em_json_do_claude_p() -> None:
+    pytest.importorskip("claude_agent_sdk")
+    query, cap = query_falsa(object(), ResultMessage())
+    r = sdk(query, modelo="sonnet")
+    assert r.codigo == 0 and not r.estourou_tempo and r.erro == ""
+    dados = loop.interpretar_saida(r.saida)
+    assert dados is not None
+    for chave in (
+        "is_error",
+        "subtype",
+        "result",
+        "total_cost_usd",
+        "num_turns",
+        "duration_ms",
+        "session_id",
+        "usage",
+    ):
+        assert chave in dados
+    assert dados["total_cost_usd"] == 0.42 and dados["is_error"] is False
+    assert dados["result"] == "feito" and dados["num_turns"] == 7
+    assert cap["prompt"] == "oi"
+    op = cap["options"]
+    assert op.permission_mode == "auto" and op.model == "sonnet"
+    assert op.setting_sources == ["user", "project", "local"]
+    assert op.env["CLAUDE_AGENT_SDK_CLIENT_APP"].startswith("pg-atlas-loop/")
+    assert op.can_use_tool is not None
+
+
+def test_sdk_erro_do_agente_mantem_is_error() -> None:
+    pytest.importorskip("claude_agent_sdk")
+    query, _ = query_falsa(
+        ResultMessage(is_error=True, subtype="error_max_turns", result=None, errors=["x"])
+    )
+    dados = loop.interpretar_saida(sdk(query).saida)
+    assert dados["is_error"] is True and dados["subtype"] == "error_max_turns"
+    assert dados["result"] == "x"
+
+
+def test_sdk_estouro_de_tempo() -> None:
+    pytest.importorskip("claude_agent_sdk")
+    import asyncio
+
+    async def dormir():
+        await asyncio.sleep(10)
+
+    query, _ = query_falsa(depois=dormir)
+    r = sdk(query, timeout=0.05)
+    assert r.estourou_tempo and r.codigo == 124
+
+
+def test_sdk_excecao_vira_codigo_diferente_de_zero() -> None:
+    pytest.importorskip("claude_agent_sdk")
+
+    async def query(*, prompt, options):
+        raise RuntimeError("falhou " + "x" * 1000)
+        yield  # pragma: no cover
+
+    r = sdk(query)
+    assert r.codigo != 0 and not r.estourou_tempo
+    assert r.erro.startswith("RuntimeError: falhou") and len(r.erro) <= 300
+
+
+def test_sdk_sem_result_message() -> None:
+    pytest.importorskip("claude_agent_sdk")
+    query, _ = query_falsa(object())
+    r = sdk(query)
+    assert r.codigo != 0 and "ResultMessage" in r.erro
+
+
+def test_sdk_can_use_tool_sempre_nega() -> None:
+    pytest.importorskip("claude_agent_sdk")
+    import asyncio
+
+    for nome in ("Bash", "Write", "Read"):
+        r = asyncio.run(loop._negar_permissao(nome, {"x": 1}, None))
+        assert r.behavior == "deny" and r.message
+
+
+def test_parser_aceita_executor_e_modelo() -> None:
+    p = loop.criar_parser()
+    a = p.parse_args([])
+    assert a.executor == "cli" and a.modelo is None
+    a = p.parse_args(["--executor", "sdk", "--modelo", "opus"])
+    assert a.executor == "sdk" and a.modelo == "opus"
+    with pytest.raises(SystemExit):
+        p.parse_args(["--executor", "outro"])
+
+
+def test_cli_modelo_entra_no_comando(amb: Ambiente) -> None:
+    assert "--model" not in loop.montar_comando(amb.config)
+    amb.config.modelo = "sonnet"
+    cmd = loop.montar_comando(amb.config)
+    assert cmd[cmd.index("--model") + 1] == "sonnet"
+
+
+def test_sdk_sem_chave_encerra_sem_rodar_volta(amb: Ambiente, monkeypatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    amb.config.executor = "sdk"
+    chamadas: list = []
+    deps = amb.deps()
+    deps.executor_sdk = lambda *a, **k: chamadas.append(a)
+    assert loop.executar_loop(amb.config, deps) == "sem_chave_api"
+    assert chamadas == [] and amb.chamadas == []
+    assert any("ANTHROPIC_API_KEY" in m for m in amb.mensagens)
+
+
+def test_sdk_com_chave_roda_volta_pelo_executor_sdk(amb: Ambiente, monkeypatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
+    amb.config.executor = "sdk"
+    amb.config.modelo = "sonnet"
+    amb.config.max_voltas = 1
+    chamadas: list = []
+
+    def executor_sdk(prompt, **kw):
+        chamadas.append((prompt, kw))
+        amb.concluir("0.2")
+        return loop.ResultadoProcesso(0, ok_json("pelo sdk", 3.0))
+
+    deps = amb.deps()
+    deps.executor_sdk = executor_sdk
+    assert loop.executar_loop(amb.config, deps) == "max_voltas"
+    assert len(chamadas) == 1 and chamadas[0][0] == loop.PROMPT_CONTINUACAO
+    assert chamadas[0][1]["modelo"] == "sonnet" and chamadas[0][1]["modo_permissao"] == "auto"
+    assert amb.chamadas_claude() == []  # o subprocesso do claude não foi usado
+    assert amb.linhas_log()[0]["custo_usd"] == 3.0
+
+
+def test_simular_mostra_executor(amb: Ambiente, monkeypatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
+    amb.config.executor = "sdk"
+    assert loop.simular(amb.config, amb.deps()) == 0
+    saida = "\n".join(amb.mensagens)
+    assert "Executor: sdk" in saida and "--permission-prompts" not in saida

@@ -21,7 +21,7 @@ A cada volta:
 3. Se a próxima tarefa depende do banco e o `.env` não existe ou está incompleto (testando só se as variáveis estão vazias, sem ler os valores), espera 10 minutos e volta ao passo 1.
 4. Chama `claude -p` com o prompt fixo de continuação (abaixo), as permissões de `.claude/settings.json` e saída em JSON.
 5. Registra o resultado da volta em `_controle/loop.log` (início, fim, tarefa, status).
-6. Se a saída indicar limite de uso da conta, espera até o horário de liberação informado (ou 30 minutos, se não houver horário) e tenta de novo. O script não troca para a API sozinho (ver gate G4).
+6. Se a saída indicar limite de uso da conta, espera até o horário de liberação informado (ou 30 minutos, se não houver horário) e tenta de novo. O script só usa a API quando o dono passa `--executor sdk` explicitamente (requer `ANTHROPIC_API_KEY` no ambiente); ele nunca decide isso sozinho, nem ao atingir o limite (ver gate G4).
 7. Se três voltas seguidas terminarem sem avanço no `estado.json`, para e registra a pendência G5.
 8. Limite de segurança: no máximo 500 voltas por execução (configurável).
 
@@ -92,7 +92,7 @@ São as únicas situações que dependem do dono. Nenhuma delas para o trabalho 
 | G1 | Não há `.env` preenchido na pasta de trabalho | Copia `.env.example` para `.env` e preenche (ver `atlas-eldados/docs/INSUMOS.md`) | Toda a fase 0 que não usa banco; testes offline |
 | G2 | Não foi possível confirmar que o atlas-eldados é privado | Confirma no GitHub e marca a pendência como resolvida | Commits locais; o push fica suspenso |
 | G3 | Há tabelas candidatas a domínio | Copia para `config/dominios.yml` as que aprova | Tudo; as tabelas não aprovadas são documentadas só pela estrutura |
-| G4 | Limite de uso da conta atingido várias vezes seguidas | Decide se autoriza o uso da API (com teto) | O loop espera a liberação do limite e continua sozinho |
+| G4 | Limite de uso da conta atingido várias vezes seguidas | Decide se autoriza o uso da API (com teto); se sim, reinicia o loop com `--executor sdk` | O loop espera a liberação do limite e continua sozinho |
 | G5 | O loop parou de avançar | Lê `PENDENCIAS-HUMANAS.md` e `loop.log` | Nada; o loop está parado |
 
 Para resolver um gate, o dono edita `PENDENCIAS-HUMANAS.md` trocando `ABERTA` por `RESOLVIDA` na linha correspondente. O loop confere esse arquivo a cada volta.
