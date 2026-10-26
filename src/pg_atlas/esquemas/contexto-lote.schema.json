@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Pacote de contexto de um lote (D-023). Só metadado: nenhum valor de dado.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["classe_leve", "formato", "lote", "schemas", "tabelas", "tipo", "total_tabelas", "truncamento", "versao_formato"],
+  "properties": {
+    "formato": {"const": "contexto_lote"},
+    "versao_formato": {"const": 1},
+    "lote": {"type": "string", "minLength": 1},
+    "tipo": {"enum": ["grafo", "leve"]},
+    "classe_leve": {"enum": ["temporaria_ou_copia", "vazia", null]},
+    "schemas": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "total_tabelas": {"type": "integer", "minimum": 1},
+    "truncamento": {"type": "object"},
+    "tabelas": {"type": "array", "minItems": 1, "items": {"oneOf": [{"$ref": "#/$defs/tabela"}, {"$ref": "#/$defs/tabela_leve"}]}},
+    "relacionamentos": {"type": "array", "items": {"$ref": "#/$defs/aresta"}},
+    "usos": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rotinas", "views"],
+      "properties": {
+        "views": {"type": "array", "items": {"$ref": "#/$defs/uso"}},
+        "rotinas": {"type": "array", "items": {"$ref": "#/$defs/uso"}}
+      }
+    },
+    "fatos": {"type": "array", "items": {"type": "string"}},
+    "dominios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["situacao", "tabela", "valores"],
+        "properties": {
+          "tabela": {"type": "string"},
+          "situacao": {"const": "pendente"},
+          "valores": {"type": "null"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "uso": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nome", "tipo"],
+      "properties": {"nome": {"type": "string"}, "tipo": {"type": "string"}, "motivo": {"enum": ["gatilho", "codigo"]}}
+    },
+    "tabela_leve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classe", "comentario", "nome", "schema", "tipo", "total_colunas"],
+      "properties": {
+        "schema": {"type": "string"},
+        "nome": {"type": "string"},
+        "classe": {"type": "string"},
+        "tipo": {"type": ["string", "null"]},
+        "total_colunas": {"type": "integer", "minimum": 0},
+        "comentario": {"type": ["string", "null"]}
+      }
+    },
+    "estatisticas": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Só estas chaves são permitidas (regra 4): nunca valores mais comuns nem limites de histograma.",
+      "properties": {
+        "avg_width": {"type": ["integer", "null"]},
+        "correlation": {"type": ["number", "null"]},
+        "n_distinct": {"type": ["number", "null"]},
+        "null_frac": {"type": ["number", "null"]},
+        "herdada": {"type": "boolean"}
+      }
+    },
+    "coluna": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["comentario", "nome", "obrigatoria", "tipo"],
+      "properties": {
+        "ordem": {"type": ["integer", "null"]},
+        "nome": {"type": "string"},
+        "tipo": {"type": ["string", "null"]},
+        "obrigatoria": {"type": "boolean"},
+        "padrao": {"type": ["string", "null"]},
+        "comentario": {"type": ["string", "null"]},
+        "gerada": {"enum": [true, null]},
+        "identidade": {"type": ["string", "null"]},
+        "estatisticas": {"$ref": "#/$defs/estatisticas"}
+      }
+    },
+    "tabela": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checks", "classe", "colunas", "comentario", "fks_declaradas", "gatilhos", "indices", "nome", "pk", "schema", "unicas"],
+      "properties": {
+        "schema": {"type": "string"},
+        "nome": {"type": "string"},
+        "classe": {"type": "string"},
+        "particao_de": {"type": ["string", "null"]},
+        "tipo": {"type": ["string", "null"]},
+        "comentario": {"type": ["string", "null"]},
+        "linhas_estimadas": {"type": ["integer", "null"]},
+        "tamanho_total_bytes": {"type": ["integer", "null"]},
+        "colunas": {"type": "array", "items": {"$ref": "#/$defs/coluna"}},
+        "pk": {"type": "array", "items": {"type": "string"}},
+        "unicas": {"type": "array", "items": {"type": "object"}},
+        "checks": {"type": "array", "items": {"type": "object"}},
+        "indices": {"type": "array", "items": {"type": "object"}},
+        "fks_declaradas": {"type": "array", "items": {"type": "object"}},
+        "gatilhos": {"type": "array", "items": {"type": "object"}},
+        "particao": {"type": ["object", "null"]},
+        "definicao": {"type": ["string", "null"]},
+        "depende_de": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "ponta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["colunas", "relacao"],
+      "properties": {"relacao": {"type": "string"}, "colunas": {"type": "array", "items": {"type": "string"}}}
+    },
+    "aresta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["confianca", "destino", "fonte", "id", "origem", "posicao"],
+      "properties": {
+        "id": {"type": "string"},
+        "origem": {"$ref": "#/$defs/ponta"},
+        "destino": {"$ref": "#/$defs/ponta"},
+        "posicao": {"enum": ["interna", "saida", "entrada"]},
+        "confianca": {"enum": ["declarado", "confirmado", "hipotese"]},
+        "fonte": {"type": "string"},
+        "taxa_casamento": {"type": ["number", "null"]},
+        "amostrados": {"type": ["integer", "null"]},
+        "nota": {"type": ["string", "null"]},
+        "analise": {"type": ["object", "null"]}
+      }
+    }
+  }
+}

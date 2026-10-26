@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Índice dos pacotes de contexto por lote (D-023).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["formato", "limites", "lotes", "resumo", "versao_formato"],
+  "properties": {
+    "formato": {"const": "contexto_indice"},
+    "versao_formato": {"const": 1},
+    "limites": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 1}},
+    "lotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["arquivo", "bytes", "dominios_pendentes", "lote", "tabelas", "tipo", "truncamento"],
+        "properties": {
+          "lote": {"type": "string"},
+          "arquivo": {"type": "string"},
+          "tipo": {"enum": ["grafo", "leve"]},
+          "tabelas": {"type": "integer", "minimum": 1},
+          "bytes": {"type": "integer", "minimum": 1},
+          "truncamento": {"type": "array", "items": {"type": "string"}},
+          "dominios_pendentes": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "resumo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dominios_aprovados_sem_lote", "dominios_pendentes", "fatos_lidos", "lotes_truncados", "maior_pacote", "total_bytes", "total_lotes", "total_tabelas"],
+      "properties": {
+        "total_lotes": {"type": "integer"},
+        "total_tabelas": {"type": "integer"},
+        "total_bytes": {"type": "integer"},
+        "maior_pacote": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bytes", "lote"],
+          "properties": {"lote": {"type": "string"}, "bytes": {"type": "integer"}}
+        },
+        "lotes_truncados": {"type": "integer"},
+        "dominios_pendentes": {"type": "integer"},
+        "dominios_aprovados_sem_lote": {"type": "integer"},
+        "fatos_lidos": {"type": "integer"}
+      }
+    }
+  }
+}
