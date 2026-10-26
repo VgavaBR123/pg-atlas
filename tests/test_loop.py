@@ -701,3 +701,127 @@ def test_simular_mostra_executor(amb: Ambiente, monkeypatch) -> None:
     assert loop.simular(amb.config, amb.deps()) == 0
     saida = "\n".join(amb.mensagens)
     assert "Executor: sdk" in saida and "--permission-prompts" not in saida
+
+
+# ------------------------------------------------------------------ modelo, chave e consumo
+
+
+def _roda_sdk_com_query(amb: Ambiente, monkeypatch, *mensagens, modelo=None):
+    """Volta completa no modo sdk com `query` falsa; devolve o que o `query` recebeu."""
+    pytest.importorskip("claude_agent_sdk")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "chave-falsa-1234")
+    amb.config.executor = "sdk"
+    amb.config.modelo = modelo
+    amb.config.max_voltas = 1
+    query, cap = query_falsa(*mensagens)
+    deps = amb.deps()
+    deps.executor_sdk = lambda prompt, **kw: loop.executar_via_sdk(prompt, query=query, **kw)
+    assert loop.executar_loop(amb.config, deps) == "max_voltas"
+    return cap
+
+
+def test_sdk_modelo_padrao_chega_ao_query(amb: Ambiente, monkeypatch) -> None:
+    cap = _roda_sdk_com_query(amb, monkeypatch, ResultMessage())
+    assert loop.MODELO_PADRAO_SDK == "claude-sonnet-5-5"
+    assert cap["options"].model == "claude-sonnet-5-5"
+    assert amb.linhas_log()[0]["modelo"] == "claude-sonnet-5-5"
+
+
+def test_sdk_modelo_informado_prevalece(amb: Ambiente, monkeypatch) -> None:
+    cap = _roda_sdk_com_query(amb, monkeypatch, ResultMessage(), modelo="opus")
+    assert cap["options"].model == "opus"
+
+
+def test_cli_sem_modelo_continua_sem_model(amb: Ambiente) -> None:
+    assert loop.modelo_efetivo(amb.config) is None
+    assert "--model" not in loop.montar_comando(amb.config)
+
+
+@pytest.mark.parametrize("flag", ["--modelo", "--model"])
+def test_flag_de_modelo_sinonimos(flag: str, amb: Ambiente, monkeypatch) -> None:
+    a = loop.criar_parser().parse_args([flag, "opus"])
+    assert a.modelo == "opus"
+    amb.config.modelo = a.modelo
+    cmd = loop.montar_comando(amb.config)
+    assert cmd[cmd.index("--model") + 1] == "opus"
+    cap = _roda_sdk_com_query(amb, monkeypatch, ResultMessage(), modelo=a.modelo)
+    assert cap["options"].model == "opus"
+
+
+@pytest.mark.parametrize("valor", ["", "   "])
+def test_sdk_chave_vazia_ou_so_espacos_encerra(amb: Ambiente, monkeypatch, valor: str) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", valor)
+    amb.config.executor = "sdk"
+    chamadas: list = []
+    deps = amb.deps()
+    deps.executor_sdk = lambda *a, **k: chamadas.append(a)
+    assert loop.executar_loop(amb.config, deps) == "sem_chave_api"
+    assert chamadas == [] and amb.chamadas == []
+    assert any("ausente ou vazia" in m and "Use-AnthropicSdkKey" in m for m in amb.mensagens)
+    assert amb.linhas_log() == []
+
+
+def test_simular_chave_vazia_avisa(amb: Ambiente, monkeypatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", " ")
+    amb.config.executor = "sdk"
+    assert loop.simular(amb.config, amb.deps()) == 0
+    saida = "\n".join(amb.mensagens)
+    assert "ausente ou vazia" in saida and "model=claude-sonnet-5-5" in saida
+
+
+def test_sdk_nao_invoca_claude_e_chave_nao_vaza(amb: Ambiente, monkeypatch, capsys) -> None:
+    _roda_sdk_com_query(amb, monkeypatch, ResultMessage())
+    assert amb.chamadas_claude() == []
+    assert all("custos" in c and c[0] != "claude" for c in amb.chamadas)
+    saida = "\n".join(amb.mensagens)
+    assert f"ANTHROPIC_API_KEY presente ({len('chave-falsa-1234')} caracteres)." in saida
+    assert saida.count("presente (") == 1
+    tudo = saida + capsys.readouterr().out
+    tudo += amb.config.log.read_text(encoding="utf-8")
+    assert "chave-falsa-1234" not in tudo
+
+
+def test_log_traz_modelo_e_tokens_do_sdk(amb: Ambiente, monkeypatch) -> None:
+    msg = ResultMessage(
+        usage={
+            "input_tokens": 100,
+            "output_tokens": 40,
+            "cache_read_input_tokens": 7,
+            "cache_creation_input_tokens": 3,
+        },
+        model_usage={"claude-sonnet-5-5": {"inputTokens": 100}},
+    )
+    _roda_sdk_com_query(amb, monkeypatch, msg, modelo="alias-qualquer")
+    linha = amb.linhas_log()[0]
+    assert linha["modelo"] == "claude-sonnet-5-5"  # chave única de model_usage vence
+    assert linha["tokens_entrada"] == 100 and linha["tokens_saida"] == 40
+    assert linha["tokens_cache_leitura"] == 7 and linha["tokens_cache_escrita"] == 3
+
+
+def test_resultado_para_dict_inclui_model_usage() -> None:
+    d = loop.resultado_para_dict(ResultMessage(model_usage={"m": {}}))
+    assert d["model_usage"] == {"m": {}} and d["usage"]["input_tokens"] == 10
+
+
+def test_consumo_cli_model_usage_camel_e_faltantes() -> None:
+    saida = {"usage": {"input_tokens": 5}, "modelUsage": {"a": {}, "b": {}}}
+    c = loop.extrair_consumo(saida, "cfg")
+    assert c == {
+        "modelo": "cfg",  # duas chaves: fica o configurado
+        "tokens_entrada": 5,
+        "tokens_saida": None,
+        "tokens_cache_leitura": None,
+        "tokens_cache_escrita": None,
+    }
+    assert loop.extrair_consumo({"modelUsage": {"x": {}}}, None)["modelo"] == "x"
+    assert loop.extrair_consumo(None, None)["tokens_entrada"] is None
+
+
+def test_log_cli_sem_uso_tem_chaves_nulas(amb: Ambiente) -> None:
+    amb.respostas = [resp_ok("0.2")]
+    amb.config.max_voltas = 1
+    amb.rodar()
+    linha = amb.linhas_log()[0]
+    for k in ("modelo", "tokens_entrada", "tokens_saida", "tokens_cache_leitura"):
+        assert linha[k] is None
+    assert linha["tokens_cache_escrita"] is None

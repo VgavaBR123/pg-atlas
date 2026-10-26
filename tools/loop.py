@@ -25,7 +25,19 @@ Executores (`--executor`):
 - `sdk`: o Claude Agent SDK (`pip install pg-atlas[sdk]`), que usa a chave `ANTHROPIC_API_KEY`
   do ambiente e cobra os créditos da API. O resultado é convertido para o mesmo JSON do
   `claude -p`, então o resto do laço não muda. Qualquer pedido de permissão é negado
-  (equivalente a `--permission-prompts none`).
+  (equivalente a `--permission-prompts none`). Sem `--modelo` (ou `--model`), o modo sdk usa
+  `claude-sonnet-5-5`.
+
+No modo `sdk` o `loop.py` NÃO invoca o programa `claude`: quem fala com a API é o pacote
+`claude_agent_sdk`, que traz seu próprio binário e se identifica como Agent SDK pelo
+`CLAUDE_CODE_ENTRYPOINT=sdk-py`. A chave vem só de `ANTHROPIC_API_KEY`; o loop não cai em
+outro método de autenticação (assinatura, login) porque encerra antes, com o motivo
+`sem_chave_api`, se a variável faltar, estiver vazia ou tiver só espaços. Quando presente, o
+loop imprime apenas o comprimento ("presente (N caracteres)"); o valor nunca é lido além disso.
+
+Cada volta grava no `loop.log` o consumo: `modelo`, `tokens_entrada`, `tokens_saida`,
+`tokens_cache_leitura` e `tokens_cache_escrita` (inteiros ou nulos), vindos de `usage` e
+`model_usage`/`modelUsage` da saída JSON da volta.
 
 O processo roda com cwd no workspace, para que o `.claude/settings.json` do projeto valha.
 
@@ -34,7 +46,8 @@ Regras de segurança deste script:
   que apenas testa se as variáveis estão preenchidas;
 - só usa a API quando o dono passa `--executor sdk` explicitamente; o loop nunca decide isso
   sozinho, nem ao atingir o limite de uso da conta (gate G4);
-- nunca lê nem imprime o valor de `ANTHROPIC_API_KEY`: só confere se a variável existe;
+- nunca imprime nem grava o valor de `ANTHROPIC_API_KEY`: só confere se está preenchida e
+  informa o comprimento;
 - do texto da resposta do Claude grava no máximo 300 caracteres, no `loop.log`.
 
 Modo `--simular`: mostra a próxima tarefa e o comando que seria executado, sem chamar o
@@ -80,6 +93,11 @@ VOLTAS_SEM_AVANCO_G5 = 3
 MAX_RESULTADO = 300
 TIMEOUT_PADRAO_S = 3 * 3600
 MAX_VOLTAS_PADRAO = 500
+MODELO_PADRAO_SDK = "claude-sonnet-5-5"
+MSG_SEM_CHAVE = (
+    "ANTHROPIC_API_KEY ausente ou vazia; rode Use-AnthropicSdkKey nesta janela e inicie o "
+    "loop de novo. O valor nunca é lido nem exibido."
+)
 
 STATUS_ABERTOS = ("pendente", "em_andamento")
 CABECALHO_PENDENCIAS = (
@@ -145,6 +163,22 @@ class Config:
     @property
     def parar(self) -> Path:
         return self.workspace / "PARAR"
+
+
+def modelo_efetivo(config: Config) -> str | None:
+    """Modelo informado; no modo sdk, sem informação, vale `MODELO_PADRAO_SDK`."""
+    if config.modelo:
+        return config.modelo
+    return MODELO_PADRAO_SDK if config.executor == "sdk" else None
+
+
+def tamanho_chave_api() -> int | None:
+    """Comprimento de `ANTHROPIC_API_KEY`; None se ausente, vazia ou só espaços.
+
+    O comprimento é a única coisa derivada do valor.
+    """
+    valor = os.environ.get("ANTHROPIC_API_KEY", "")
+    return len(valor) if valor.strip() else None
 
 
 def _agora_local() -> datetime:
@@ -390,6 +424,33 @@ def interpretar_saida(saida: str) -> dict[str, Any] | None:
     return dados if isinstance(dados, dict) else None
 
 
+_CAMPOS_TOKENS = (
+    ("tokens_entrada", "input_tokens"),
+    ("tokens_saida", "output_tokens"),
+    ("tokens_cache_leitura", "cache_read_input_tokens"),
+    ("tokens_cache_escrita", "cache_creation_input_tokens"),
+)
+
+
+def extrair_consumo(saida: Mapping[str, Any] | None, modelo_config: str | None) -> dict[str, Any]:
+    """Modelo e tokens da volta. O que faltar fica `None`; nunca levanta exceção."""
+    saida = saida or {}
+    por_modelo = saida.get("model_usage")
+    if not isinstance(por_modelo, Mapping):
+        por_modelo = saida.get("modelUsage")
+    modelo = modelo_config
+    if isinstance(por_modelo, Mapping) and len(por_modelo) == 1:
+        modelo = str(next(iter(por_modelo)))
+    uso = saida.get("usage")
+    uso = uso if isinstance(uso, Mapping) else {}
+    consumo: dict[str, Any] = {"modelo": modelo}
+    for nome, chave in _CAMPOS_TOKENS:
+        valor = uso.get(chave)
+        ok = isinstance(valor, int) and not isinstance(valor, bool)
+        consumo[nome] = valor if ok else None
+    return consumo
+
+
 def montar_linha_log(
     *,
     volta: int,
@@ -401,6 +462,7 @@ def montar_linha_log(
     saida: Mapping[str, Any] | None,
     avanco: bool,
     avisos: list[str],
+    modelo: str | None = None,
 ) -> str:
     """Uma linha JSON por volta. Do texto da resposta, só os 300 primeiros caracteres."""
     custo = None
@@ -427,6 +489,7 @@ def montar_linha_log(
         "subtype": subtype,
         "tarefa": tarefa.id if tarefa else None,
         "volta": volta,
+        **extrair_consumo(saida, modelo),
     }
     return json.dumps(registro, sort_keys=True, ensure_ascii=False)
 
@@ -528,6 +591,7 @@ def resultado_para_dict(msg: Any) -> dict[str, Any]:
         "subtype": getattr(msg, "subtype", None),
         "total_cost_usd": getattr(msg, "total_cost_usd", None),
         "usage": getattr(msg, "usage", None),
+        "model_usage": getattr(msg, "model_usage", None),
     }
 
 
@@ -678,12 +742,12 @@ def executar_loop(config: Config, deps: Dependencias) -> str:
     Motivos: `parar`, `concluido`, `max_voltas`, `sem_avanco` (G5), `sem_tarefa`,
     `estado_invalido`, `sem_chave_api` (executor sdk sem `ANTHROPIC_API_KEY`).
     """
-    if config.executor == "sdk" and "ANTHROPIC_API_KEY" not in os.environ:
-        deps.imprimir(
-            "Executor sdk exige ANTHROPIC_API_KEY no ambiente (o valor não é lido nem exibido): "
-            "encerrando."
-        )
-        return "sem_chave_api"
+    if config.executor == "sdk":
+        tamanho = tamanho_chave_api()
+        if tamanho is None:
+            deps.imprimir(MSG_SEM_CHAVE)
+            return "sem_chave_api"
+        deps.imprimir(f"ANTHROPIC_API_KEY presente ({tamanho} caracteres).")
     voltas = 0
     limites_seguidos = 0
     sem_avanco = 0
@@ -754,7 +818,7 @@ def executar_loop(config: Config, deps: Dependencias) -> str:
                 cwd=config.workspace,
                 timeout=config.timeout_s,
                 modo_permissao=config.modo_permissao,
-                modelo=config.modelo,
+                modelo=modelo_efetivo(config),
             )
         else:
             r = deps.executor(
@@ -807,6 +871,7 @@ def executar_loop(config: Config, deps: Dependencias) -> str:
                 saida=saida,
                 avanco=avancou,
                 avisos=avisos,
+                modelo=modelo_efetivo(config),
             ),
         )
 
@@ -851,9 +916,14 @@ def simular(config: Config, deps: Dependencias) -> int:
     p = deps.imprimir
     p(f"Workspace: {config.workspace}")
     p(f"Documentação: {config.doc}")
-    p(f"Executor: {config.executor}" + (f" (modelo {config.modelo})" if config.modelo else ""))
-    if config.executor == "sdk" and "ANTHROPIC_API_KEY" not in os.environ:
-        p("Aviso: ANTHROPIC_API_KEY não está no ambiente; o loop encerraria ao iniciar.")
+    efetivo = modelo_efetivo(config)
+    p(f"Executor: {config.executor}" + (f" (modelo {efetivo})" if efetivo else ""))
+    if config.executor == "sdk":
+        tamanho = tamanho_chave_api()
+        if tamanho is None:
+            p("Aviso: " + MSG_SEM_CHAVE + " O loop encerraria ao iniciar.")
+        else:
+            p(f"ANTHROPIC_API_KEY presente ({tamanho} caracteres).")
     if config.parar.exists():
         p("Arquivo PARAR existe: o loop encerraria agora.")
         return 0
@@ -876,7 +946,7 @@ def simular(config: Config, deps: Dependencias) -> int:
     else:
         if config.executor == "sdk":
             p("Chamada ao Claude Agent SDK (permissões sempre negadas; o prompt vai por query()):")
-            p(f"  permission_mode={config.modo_permissao}  model={config.modelo or 'padrão'}")
+            p(f"  permission_mode={config.modo_permissao}  model={efetivo or 'padrão'}")
         else:
             p("Comando (o prompt vai pela entrada padrão):")
             p("  " + " ".join(montar_comando(config)))
@@ -930,7 +1000,12 @@ def criar_parser() -> argparse.ArgumentParser:
         "exige ANTHROPIC_API_KEY no ambiente",
     )
     ap.add_argument(
-        "--modelo", default=None, help="alias ou id do modelo (--model no CLI; model= no SDK)"
+        "--modelo",
+        "--model",
+        dest="modelo",
+        default=None,
+        help="alias ou id do modelo (--model no CLI; model= no SDK; padrão no sdk: "
+        f"{MODELO_PADRAO_SDK})",
     )
     ap.add_argument(
         "--timeout-h",
