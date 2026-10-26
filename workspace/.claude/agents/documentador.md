@@ -20,6 +20,11 @@ O caminho de um pacote `atlas-eldados/_controle/lotes/<id>.json` e o modo: `tabe
 
 - Escreva só fora dos marcadores `<!-- pg-atlas:auto ... -->`. O que está entre eles é gerado por código.
 - Toda afirmação de significado leva grau: `[declarado]`, `[confirmado]` ou `[hipotese]`.
+- `declarado` é só o que está literalmente no catálogo do pacote: FK, comentário do banco, tipo, constraint, CHECK, default. Estatística do catálogo (nulos, distintos, tamanho) e qualquer dedução pelo nome da tabela ou da coluna são `[hipotese]`, nunca `[declarado]`.
+- Restrições CHECK, defaults e índices já estão no bloco automático da ficha. Cite-os; nunca diga que estão ausentes sem conferir o bloco.
+- Filtro de tenant: antes de escrever que o caminho do tenant não foi determinado, siga as FKs do pacote até uma tabela que tenha a coluna de tenant de `fatos.yml`. Se chegar, descreva o caminho e marque `[declarado]`.
+- Ligação que não está no grafo de relacionamentos do pacote se descreve como "sem aresta no grafo", não como "sem relacionamento".
+- Nos SQLs de exemplo, o filtro de tenant usa o parâmetro nomeado definido em `fatos.yml`, nunca um valor real.
 - Use só nomes de tabelas e colunas que existam no pacote. Não invente.
 - Nunca escreva valor real de dado. Formatos se descrevem pelo padrão.
 - Quando uma hipótese for importante e verificável, escreva o SQL de verificação (só agregados, por exemplo `SELECT count(*) ... WHERE ...` ou taxa de casamento) em `atlas-eldados/_controle/verificacoes/pendentes/<id>-<n>.sql`, com um comentário na primeira linha dizendo o que ele confirma. Você não executa; o `pg_atlas` executa.
