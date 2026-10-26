@@ -33,8 +33,27 @@
         "required": ["situacao", "tabela", "valores"],
         "properties": {
           "tabela": {"type": "string"},
-          "situacao": {"const": "pendente"},
-          "valores": {"type": "null"}
+          "situacao": {"enum": ["pendente", "lida", "truncada", "sem_privilegio", "erro"]},
+          "valores": {
+            "oneOf": [
+              {"type": "null"},
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["colunas", "linhas"],
+                "properties": {
+                  "colunas": {"type": "array", "items": {"type": "string"}},
+                  "linhas": {"type": "array", "maxItems": 100, "items": {"type": "array", "items": {"type": ["string", "number", "boolean", "null"]}}}
+                }
+              }
+            ]
+          },
+          "motivo": {"type": ["string", "null"]},
+          "arquivo": {"type": "string", "description": "Arquivo em catalogo/dominios/ com todas as linhas, quando o pacote leva só parte."},
+          "total_linhas": {"type": "integer", "minimum": 0},
+          "linhas_omitidas_no_pacote": {"type": "integer", "minimum": 1},
+          "colunas_omitidas": {"type": "array", "items": {"type": "string"}},
+          "revisar": {"type": "boolean"}
         }
       }
     }

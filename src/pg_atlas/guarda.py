@@ -25,6 +25,7 @@ o que mantém o tokenizador alinhado com o analisador do servidor.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 
 import sqlglot
 from sqlglot import exp
@@ -331,8 +332,43 @@ def _conferir_relacoes_restritas(raiz: exp.Expression, restritas: list[str]) -> 
                 raise _rejeitar(f"coluna fora da lista branca do pg_stats: {nome}")
 
 
-def verificar(sql: str) -> None:
-    """Lança `SqlRejeitado` se o SQL não puder ir ao banco; senão, retorna sem nada."""
+def _conferir_tabelas_liberadas(sql: str, liberadas: frozenset[str]) -> None:
+    """Modo de leitura de valores (D-023): só `SELECT` cujas tabelas estão todas em `liberadas`.
+
+    Cada tabela precisa vir qualificada (`schema.tabela`) e constar da lista passada
+    explicitamente pelo chamador; nomes de CTE locais são ignorados. Funções de tabela,
+    `VALUES`, subconsultas em `FROM` sem tabela real e qualquer coisa que o sqlglot não
+    consiga analisar são rejeitadas (na dúvida, rejeitar).
+    """
+    try:
+        arvores = [a for a in sqlglot.parse(sql, read="postgres") if a is not None]
+    except SqlglotError:
+        raise _rejeitar("consulta de valores que não pôde ser analisada") from None
+    if len(arvores) != 1 or not isinstance(arvores[0], exp.Select):
+        raise _rejeitar("a leitura de valores aceita um único SELECT simples")
+    raiz = arvores[0]
+    if raiz.args.get("with_") or raiz.args.get("with"):
+        raise _rejeitar("a leitura de valores não aceita WITH")
+    if any(isinstance(no, (exp.Subquery, exp.Values, exp.Union, exp.Lateral, exp.Join)) for no in raiz.walk()):
+        raise _rejeitar("a leitura de valores não aceita subconsulta, junção ou união")
+    tabelas = list(raiz.find_all(exp.Table))
+    if len(tabelas) != 1:
+        raise _rejeitar("a leitura de valores aceita exatamente uma tabela")
+    tabela = tabelas[0]
+    if not isinstance(tabela.this, exp.Identifier) or not tabela.db or tabela.catalog:
+        raise _rejeitar("tabela fora do padrão schema.tabela")
+    nome = f"{tabela.db}.{tabela.name}"
+    if nome not in liberadas:
+        raise _rejeitar("tabela fora da lista de domínio aprovada")
+
+
+def verificar(sql: str, tabelas_liberadas: Iterable[str] | None = None) -> None:
+    """Lança `SqlRejeitado` se o SQL não puder ir ao banco; senão, retorna sem nada.
+
+    `tabelas_liberadas` (nomes `schema.tabela`, exatos) ativa o modo de leitura de valores:
+    além das regras gerais, o SQL deve ser um `SELECT` de uma única tabela dessa lista.
+    Sem o parâmetro, vale o comportamento de sempre (a lista nunca é implícita).
+    """
     if not isinstance(sql, str):
         raise _rejeitar("o SQL deve ser texto")
     minusculo = sql.lower()
@@ -349,12 +385,16 @@ def verificar(sql: str) -> None:
                 if coluna in palavras:
                     raise _rejeitar(f"coluna não permitida: {coluna}")
     _conferir_arvore(sql, tokens, restritas)
+    if tabelas_liberadas is not None:
+        if tokens[0][1] != "select" or restritas:
+            raise _rejeitar("a leitura de valores aceita só SELECT de tabela de usuário")
+        _conferir_tabelas_liberadas(sql, frozenset(tabelas_liberadas))
 
 
-def permitido(sql: str) -> tuple[bool, str | None]:
+def permitido(sql: str, tabelas_liberadas: Iterable[str] | None = None) -> tuple[bool, str | None]:
     """Versão sem exceção: `(True, None)` ou `(False, motivo)`."""
     try:
-        verificar(sql)
+        verificar(sql, tabelas_liberadas)
     except SqlRejeitado as erro:
         return False, str(erro)
     return True, None

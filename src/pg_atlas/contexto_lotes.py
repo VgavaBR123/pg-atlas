@@ -13,9 +13,9 @@ Regras de segurança:
 - literais em definições de view, checks, predicados, padrões e limites de partição são neutralizados
   (`sanitizar_codigo`: strings viram `'?'`, números com mais de 4 dígitos viram `0`);
 - `config/fatos.yml`: `tenant.valores` nunca é lido (usa `ler_fatos`);
-- valores das tabelas de domínio aprovadas NÃO são lidos aqui (o comando não conecta). O pacote só lista
-  as tabelas de domínio do lote com `situacao: "pendente"`; a leitura dos valores, pelo `pg_atlas` com
-  guarda de SQL e LIMIT, é tarefa posterior.
+- este comando nunca conecta. Os valores das tabelas de domínio aprovadas vêm dos arquivos de
+  `catalogo/dominios/` (gerados por `dominios ler`, D-023 item 8): até 100 linhas por tabela no pacote
+  (acima disso o pacote aponta o arquivo); sem arquivo, a tabela fica com `situacao: "pendente"`.
 """
 
 from __future__ import annotations
@@ -23,17 +23,19 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from collections import Counter
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 from typing import Any
 
 import jsonschema
-import yaml
 
 from pg_atlas.cli import adicionar_argumentos_comuns
 from pg_atlas.config import carregar_projeto
+from pg_atlas.dominios import PASTA_SAIDA as PASTA_DOMINIOS
+from pg_atlas.dominios import ler_dominios_aprovados, ler_resultados
 from pg_atlas.json_util import escrever_json, serializar_json
 from pg_atlas.relacionamentos import SAIDA, ErroRelacionamentos, carregar_estruturas, ler_grafo_existente
 from pg_atlas.relacionamentos_codigo import FONTE_CODIGO
@@ -55,6 +57,7 @@ MAX_HIPOTESES = 150  # arestas `hipotese` por pacote (sempre aplicado; ordem: ma
 MAX_EXTERNAS = 200  # arestas declarado/confirmado com uma ponta fora do lote, por pacote (sempre aplicado)
 MAX_EXTERNAS_CORTE = 40  # teto do corte de tamanho
 MAX_USOS = 100  # views/rotinas listadas por pacote
+MAX_LINHAS_DOMINIO = 100  # linhas de uma tabela de domínio no pacote (D-023, item 8); acima, aponta o arquivo
 
 Chave = tuple[str, str]
 
@@ -72,6 +75,7 @@ class Fontes:
     arestas: list[dict[str, Any]]
     fatos: list[str]
     dominios: set[str]
+    dominios_lidos: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 def _ler_json(caminho: Path) -> Any:
@@ -101,19 +105,6 @@ def ler_estatisticas_colunas(raiz: Path) -> dict[Chave, dict[str, Any]]:
     return saida
 
 
-def ler_dominios_aprovados(doc: Path) -> set[str]:
-    """Nomes `schema.tabela` de `config/dominios.yml` (lista `aprovadas`). Arquivo ausente: conjunto vazio."""
-    caminho = doc / "config" / "dominios.yml"
-    if not caminho.is_file():
-        return set()
-    try:
-        dados = yaml.safe_load(caminho.read_text(encoding="utf-8")) or {}
-    except (OSError, yaml.YAMLError):
-        raise ErroRelacionamentos(f"YAML inválido em {caminho}") from None
-    itens = dados.get("aprovadas") if isinstance(dados, dict) else None
-    return {str(i) for i in itens or [] if isinstance(i, str)}
-
-
 def carregar_fontes(doc: Path) -> Fontes:
     lotes = _ler_json(doc.joinpath(*ARQ_LOTES))
     caminho_grafo = doc.joinpath(*SAIDA)
@@ -126,7 +117,10 @@ def carregar_fontes(doc: Path) -> Fontes:
     estat = ler_estatisticas_colunas(raiz)
     filhos = mapa_de_particoes(estruturas)
     linhas = {k: linhas_estimadas(k, k in filhos, estat, filhos) for k in relacoes}
-    return Fontes(lotes, relacoes, estat, linhas, grafo["arestas"], ler_fatos(doc), ler_dominios_aprovados(doc))
+    aprovados = ler_dominios_aprovados(doc)
+    return Fontes(
+        lotes, relacoes, estat, linhas, grafo["arestas"], ler_fatos(doc), aprovados, ler_resultados(doc, aprovados)
+    )
 
 
 # ----------------------------------------------------------------- conteúdo de uma tabela
@@ -353,9 +347,30 @@ def fatos_do_lote(dentro: set[str], fontes: Fontes) -> list[str]:
     return [f for f in fontes.fatos if any(_cita(f, n) for n in nomes)]
 
 
-def dominios_do_lote(dentro: set[str], aprovados: set[str]) -> list[dict[str, Any]]:
-    """Tabelas de domínio aprovadas do lote. Os valores não são lidos aqui: `situacao` fica `pendente`."""
-    return [{"tabela": n, "situacao": "pendente", "valores": None} for n in sorted(dentro & aprovados)]
+def _dominio_do_pacote(tabela: str, lido: dict[str, Any] | None) -> dict[str, Any]:
+    """Entrada de uma tabela de domínio: `pendente` sem arquivo; senão os valores (máx. 100 linhas)."""
+    if lido is None:
+        return {"tabela": tabela, "situacao": "pendente", "valores": None}
+    entrada: dict[str, Any] = {"tabela": tabela, "situacao": lido["situacao"], "valores": None, "motivo": lido["motivo"]}
+    if lido["revisar"]:
+        entrada["revisar"] = True
+    if lido["colunas_omitidas"]:
+        entrada["colunas_omitidas"] = sorted(c["nome"] for c in lido["colunas_omitidas"])
+    if lido["situacao"] in ("lida", "truncada"):
+        entrada["valores"] = {"colunas": lido["colunas"], "linhas": lido["linhas"][:MAX_LINHAS_DOMINIO]}
+        entrada["total_linhas"] = lido["total_linhas"]
+        if lido["total_linhas"] > MAX_LINHAS_DOMINIO:
+            entrada["linhas_omitidas_no_pacote"] = lido["total_linhas"] - MAX_LINHAS_DOMINIO
+            entrada["arquivo"] = "/".join((*PASTA_DOMINIOS, f"{tabela}.json"))
+    return entrada
+
+
+def dominios_do_lote(
+    dentro: set[str], aprovados: set[str], lidos: dict[str, dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
+    """Tabelas de domínio aprovadas do lote, com os valores já lidos (ou `pendente` se ainda não houver arquivo)."""
+    lidos = lidos or {}
+    return [_dominio_do_pacote(n, lidos.get(n)) for n in sorted(dentro & aprovados)]
 
 
 # ----------------------------------------------------------------- pacote
@@ -431,7 +446,7 @@ def montar_pacote_grafo(lote: dict[str, Any], fontes: Fontes) -> dict[str, Any]:
             "relacionamentos": relacionamentos,
             "usos": usos_no_codigo(tabelas, tocam, dentro, fontes),
             "fatos": fatos_do_lote(dentro, fontes),
-            "dominios": dominios_do_lote(dentro, fontes.dominios),
+            "dominios": dominios_do_lote(dentro, fontes.dominios, fontes.dominios_lidos),
             "truncamento": dict(omitidas),
         }
     )
@@ -510,7 +525,8 @@ def _entrada(lote_id: str, pacote: dict[str, Any]) -> dict[str, Any]:
         "tabelas": pacote["total_tabelas"],
         "bytes": tamanho(pacote),
         "truncamento": sorted(pacote["truncamento"]),
-        "dominios_pendentes": len(pacote.get("dominios", [])),
+        "dominios_pendentes": sum(d["situacao"] == "pendente" for d in pacote.get("dominios", [])),
+        "dominios_por_situacao": dict(Counter(d["situacao"] for d in pacote.get("dominios", [])).most_common()),
     }
 
 
@@ -528,6 +544,7 @@ def montar_indice(entradas: list[dict[str, Any]], fontes: Fontes, lotes: list[di
             "max_externas_corte": MAX_EXTERNAS_CORTE,
             "max_hipoteses": MAX_HIPOTESES,
             "max_usos": MAX_USOS,
+            "max_linhas_dominio": MAX_LINHAS_DOMINIO,
         },
         "lotes": sorted(entradas, key=lambda e: e["lote"]),
         "resumo": {
@@ -537,6 +554,10 @@ def montar_indice(entradas: list[dict[str, Any]], fontes: Fontes, lotes: list[di
             "maior_pacote": {"lote": maior["lote"], "bytes": maior["bytes"]},
             "lotes_truncados": sum(bool(e["truncamento"]) for e in entradas),
             "dominios_pendentes": sum(e["dominios_pendentes"] for e in entradas),
+            "dominios_por_situacao": {
+                k: sum(e["dominios_por_situacao"].get(k, 0) for e in entradas)
+                for k in sorted({k for e in entradas for k in e["dominios_por_situacao"]})
+            },
             "dominios_aprovados_sem_lote": len(fontes.dominios - em_lote),
             "fatos_lidos": len(fontes.fatos),
         },
@@ -560,5 +581,5 @@ def executar(args: argparse.Namespace) -> int:
     r = indice["resumo"]
     print(f"Pacotes: {r['total_lotes']} lotes, {r['total_tabelas']} tabelas, {r['total_bytes'] // 1024} KB no total.")
     print(f"Maior pacote: {r['maior_pacote']['lote']} com {r['maior_pacote']['bytes']} bytes (alvo {MAX_BYTES}).")
-    print(f"Lotes truncados: {r['lotes_truncados']}. Tabelas de domínio com valores pendentes: {r['dominios_pendentes']}.")
+    print(f"Lotes truncados: {r['lotes_truncados']}. Tabelas de domínio com valores pendentes: {r['dominios_pendentes']}; por situação: {r['dominios_por_situacao']}.")
     return 0

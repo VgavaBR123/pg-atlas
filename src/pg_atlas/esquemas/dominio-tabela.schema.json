@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Valores de uma tabela de domínio aprovada (D-023, item 8). Só tabelas de config/dominios.yml.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["colunas", "colunas_omitidas", "formato", "limite", "linhas", "mascaramentos", "motivo", "nome", "ordenado_por", "revisar", "schema", "situacao", "tabela", "total_linhas", "versao_formato"],
+  "properties": {
+    "formato": {"const": "dominio_tabela"},
+    "versao_formato": {"const": 1},
+    "tabela": {"type": "string", "minLength": 3},
+    "schema": {"type": "string", "minLength": 1},
+    "nome": {"type": "string", "minLength": 1},
+    "situacao": {"enum": ["lida", "truncada", "sem_privilegio", "erro"]},
+    "motivo": {"type": ["string", "null"]},
+    "limite": {"type": "integer", "minimum": 1},
+    "total_linhas": {"type": "integer", "minimum": 0},
+    "colunas": {"type": "array", "items": {"type": "string"}},
+    "colunas_omitidas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["nome", "tipo"],
+        "properties": {"nome": {"type": "string"}, "tipo": {"type": ["string", "null"]}}
+      }
+    },
+    "ordenado_por": {"type": "array", "items": {"type": "string"}},
+    "linhas": {
+      "type": "array",
+      "items": {"type": "array", "items": {"type": ["string", "number", "boolean", "null"]}}
+    },
+    "mascaramentos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["coluna", "quantidade", "tipo"],
+        "properties": {"coluna": {"type": "string"}, "tipo": {"type": "string"}, "quantidade": {"type": "integer", "minimum": 1}}
+      }
+    },
+    "revisar": {"type": "boolean"}
+  }
+}

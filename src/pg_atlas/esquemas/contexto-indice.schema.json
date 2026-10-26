@@ -13,7 +13,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["arquivo", "bytes", "dominios_pendentes", "lote", "tabelas", "tipo", "truncamento"],
+        "required": ["arquivo", "bytes", "dominios_pendentes", "dominios_por_situacao", "lote", "tabelas", "tipo", "truncamento"],
         "properties": {
           "lote": {"type": "string"},
           "arquivo": {"type": "string"},
@@ -21,14 +21,15 @@
           "tabelas": {"type": "integer", "minimum": 1},
           "bytes": {"type": "integer", "minimum": 1},
           "truncamento": {"type": "array", "items": {"type": "string"}},
-          "dominios_pendentes": {"type": "integer", "minimum": 0}
+          "dominios_pendentes": {"type": "integer", "minimum": 0},
+          "dominios_por_situacao": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 1}}
         }
       }
     },
     "resumo": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["dominios_aprovados_sem_lote", "dominios_pendentes", "fatos_lidos", "lotes_truncados", "maior_pacote", "total_bytes", "total_lotes", "total_tabelas"],
+      "required": ["dominios_aprovados_sem_lote", "dominios_pendentes", "dominios_por_situacao", "fatos_lidos", "lotes_truncados", "maior_pacote", "total_bytes", "total_lotes", "total_tabelas"],
       "properties": {
         "total_lotes": {"type": "integer"},
         "total_tabelas": {"type": "integer"},
@@ -41,6 +42,7 @@
         },
         "lotes_truncados": {"type": "integer"},
         "dominios_pendentes": {"type": "integer"},
+        "dominios_por_situacao": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 1}},
         "dominios_aprovados_sem_lote": {"type": "integer"},
         "fatos_lidos": {"type": "integer"}
       }

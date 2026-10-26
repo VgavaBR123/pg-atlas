@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Índice da leitura de valores das tabelas de domínio (D-023, item 8).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["formato", "limite", "resumo", "tabelas", "versao_formato"],
+  "properties": {
+    "formato": {"const": "dominio_indice"},
+    "versao_formato": {"const": 1},
+    "limite": {"type": "integer", "minimum": 1},
+    "tabelas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["arquivo", "linhas", "motivo", "revisar", "situacao", "tabela"],
+        "properties": {
+          "tabela": {"type": "string"},
+          "arquivo": {"type": "string"},
+          "situacao": {"enum": ["lida", "truncada", "sem_privilegio", "erro"]},
+          "linhas": {"type": "integer", "minimum": 0},
+          "revisar": {"type": "boolean"},
+          "motivo": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "resumo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aprovadas", "erro", "lida", "nao_lidas", "para_revisao", "sem_privilegio", "truncada"],
+      "properties": {
+        "aprovadas": {"type": "integer", "minimum": 0},
+        "lida": {"type": "integer", "minimum": 0},
+        "truncada": {"type": "integer", "minimum": 0},
+        "sem_privilegio": {"type": "integer", "minimum": 0},
+        "erro": {"type": "integer", "minimum": 0},
+        "nao_lidas": {"type": "integer", "minimum": 0},
+        "para_revisao": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

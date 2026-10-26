@@ -16,7 +16,7 @@ import json
 import os
 import sys
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -385,11 +385,19 @@ class Conexao:
         return self.executar_com_colunas(sql, params)[1]
 
     def executar_com_colunas(
-        self, sql: str, params: Sequence[Any] | Mapping[str, Any] | None = None
+        self,
+        sql: str,
+        params: Sequence[Any] | Mapping[str, Any] | None = None,
+        *,
+        tabelas_liberadas: Collection[str] | None = None,
     ) -> tuple[list[str], list[tuple[Any, ...]]]:
-        """Como `executar`, mas devolve também os nomes das colunas do resultado."""
+        """Como `executar`, mas devolve também os nomes das colunas do resultado.
+
+        `tabelas_liberadas` ativa o modo de leitura de valores do guarda (D-023): só um
+        SELECT de uma tabela dessa lista; é como `dominios ler` lê as tabelas de domínio.
+        """
         try:
-            guarda.verificar(sql)
+            guarda.verificar(sql, tabelas_liberadas)
         except SqlRejeitado as erro:
             self.registro.sql(sql, "rejeitado", str(erro))
             raise
