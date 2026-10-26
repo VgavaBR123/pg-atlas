@@ -934,3 +934,66 @@ def test_banco_amostra_poucos_pares(tmp_path: Path) -> None:
     resultado = rv.executar_verificacao(Projeto(doc=copia, workspace=real.workspace, dados=real.dados), limite=3)
     assert resultado.processados == 3
     rv.validar_cache(json.loads((copia / "relacionamentos" / "verificacoes.json").read_text(encoding="utf-8")))
+
+
+# ----------------------------------------------------------------- tenant: lacunas e medição (tarefa 2.5)
+
+
+def test_tenant_so_em_um_lado_nao_correlaciona(tmp_path: Path) -> None:
+    cat = catalogo(com_tenant=True)
+    cat["a"] = [t if t["nome"] != "cliente" else tab("cliente", {"nome": "text"}) for t in cat["a"]]
+    doc = preparar(tmp_path, cat, fatos="tenant:\n  coluna: id_tenant\n")
+    falsa = ConexaoFalsa(sempre(100, 100))
+    rodar(doc, falsa)
+    registros = {r["origem"]["colunas"][0] + ">" + r["destino"]["relacao"]: r for r in ler_cache(doc)["registros"]}
+    assert registros["id_cliente>cliente"]["filtro_tenant"] == "nenhum"
+    assert registros["id_pedido>pedido"]["filtro_tenant"] == "correlacionado"
+
+
+def test_coluna_de_tenant_na_chave_nao_correlaciona() -> None:
+    o = {"t": "uuid", "c": "int"}
+    assert filtro_de_tenant("t", o, o, ("c",), ("t",)) == "nenhum"
+    assert filtro_de_tenant("t", o, o, ("t",), ("c",)) == "nenhum"
+
+
+def _preparar_medicao(tmp_path: Path) -> tuple[Path, Any]:
+    doc = preparar(tmp_path, catalogo(com_tenant=True), fatos="tenant:\n  coluna: id_tenant\n")
+    rodar(doc, ConexaoFalsa(sempre(100, 90)))
+    return doc, carregar_projeto(doc)
+
+
+def test_medir_tenant_grava_so_contagens_e_nao_altera_cache_nem_grafo(tmp_path: Path) -> None:
+    doc, projeto = _preparar_medicao(tmp_path)
+    antes = (hash_de(doc / "relacionamentos" / "verificacoes.json"), hash_de(doc / "relacionamentos" / "grafo.json"))
+    falsa = ConexaoFalsa(sempre(100, 95))
+    rel = rv.executar_medicao_tenant(projeto, 2, 0, conexao=falsa, dormir=lambda s: None)
+    assert len(falsa.consultas) == 2 and not any("id_tenant" in s for s in falsa.consultas)
+    assert rel["resumo"]["pares_medidos"] == 2 and rel["resumo"]["diferenca_media"] == 0.05
+    assert rel["pares"][0]["com_filtro"]["taxa"] == 0.9 and rel["pares"][0]["sem_filtro"]["taxa"] == 0.95
+    assert json.loads((doc / "relacionamentos" / "tenant-efeito.json").read_text(encoding="utf-8")) == rel
+    depois = (hash_de(doc / "relacionamentos" / "verificacoes.json"), hash_de(doc / "relacionamentos" / "grafo.json"))
+    assert antes == depois
+
+
+def test_medir_tenant_freio_apos_tres_timeouts(tmp_path: Path) -> None:
+    doc, projeto = _preparar_medicao(tmp_path)
+    erro = ErroExecucao("x")
+    erro.sqlstate = "57014"  # type: ignore[attr-defined]
+    falsa = ConexaoFalsa(lambda sql: erro)
+    rel = rv.executar_medicao_tenant(projeto, 10, 0, conexao=falsa, dormir=lambda s: None)
+    assert len(falsa.consultas) == 3 and rel["resumo"]["interrompido_por_freio"] is True
+    assert rel["resumo"]["pares_com_erro"] == 3
+
+
+def test_escolher_pares_prioriza_chave_sem_tenant() -> None:
+    from pg_atlas.verificar_tenant import escolher_pares
+
+    def reg(f: str = "correlacionado", s: str = "verificado") -> dict:
+        return {"filtro_tenant": f, "situacao": s}
+
+    chaves = [((("s", f"o{i}")), ("c",), ("s", "p"), ("id",)) for i in range(6)]
+    cache = {k: reg() for k in chaves}
+    cache[chaves[0]] = reg("nenhum")
+    cache[chaves[1]] = reg(s="amostra_vazia")
+    esc = escolher_pares(cache, {chaves[5]}, 3)
+    assert esc[0] == chaves[5] and len(esc) == 3 and chaves[0] not in esc and chaves[1] not in esc

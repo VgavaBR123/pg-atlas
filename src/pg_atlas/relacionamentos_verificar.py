@@ -388,6 +388,11 @@ def registrar(etapas: argparse._SubParsersAction) -> None:  # type: ignore[type-
     p.add_argument("--limite", type=_inteiro_nao_negativo, default=None, help="amostra no máximo N pares nesta execução")
     p.add_argument("--pausa-ms", type=_inteiro_nao_negativo, default=0, help="pausa entre consultas, em ms (padrão 0)")
     p.add_argument("--aplicar", action="store_true", help="só aplica o cache ao grafo, sem conectar ao banco")
+    p.add_argument(
+        "--medir-tenant", type=_inteiro_nao_negativo, default=None, metavar="N",
+        help="teste: reamostra até N pares com filtro de tenant sem a correlação e grava tenant-efeito.json "
+        "(só contagens; não altera o cache nem o grafo)",
+    )
     p.set_defaults(func=executar)
 
 
@@ -414,8 +419,29 @@ def imprimir_bloco(grafo: dict[str, Any]) -> None:
         print("Erros por classe: " + ", ".join(f"{c}={n}" for c, n in b["erros"].items()) + ".")
 
 
+def executar_medicao_tenant(
+    projeto: Projeto, n: int, pausa_ms: int, conexao: Any = None, **injecoes: Any
+) -> dict[str, Any]:
+    """Mede o efeito do filtro de tenant em até `n` pares (D-019 item 6). Não altera cache nem grafo."""
+    from pg_atlas.verificar_tenant import medir_efeito_tenant
+
+    doc = projeto.doc
+    arestas = ler_grafo_existente(_caminho_grafo(doc))["arestas"]
+    cache = carregar_cache(doc.joinpath(*SAIDA_CACHE))
+    ctx = carregar_contexto(doc)
+    args = (doc, cache, coletar_pares(arestas), arestas, ctx.tenant, limiares_do_projeto(projeto), n)
+    if conexao is not None:
+        return medir_efeito_tenant(conexao, *args, pausa_ms=pausa_ms, **injecoes)
+    with Conexao(projeto) as aberta:
+        return medir_efeito_tenant(aberta, *args, pausa_ms=pausa_ms, **injecoes)
+
+
 def executar(args: argparse.Namespace) -> int:
     projeto = carregar_projeto(args.doc, args.workspace)
+    if args.medir_tenant is not None:
+        r = executar_medicao_tenant(projeto, args.medir_tenant, args.pausa_ms)["resumo"]
+        print("Efeito do tenant: " + ", ".join(f"{k}={v}" for k, v in sorted(r.items())) + ".")
+        return CODIGO_SAIDA_FREIO if r["interrompido_por_freio"] else 0
     if args.aplicar:
         imprimir_bloco(aplicar_ao_grafo(projeto.doc, projeto))
         return 0

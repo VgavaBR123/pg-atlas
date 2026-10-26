@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "contagem": {
+      "additionalProperties": false,
+      "properties": {
+        "amostrados": {"minimum": 0, "type": "integer"},
+        "casados": {"minimum": 0, "type": "integer"},
+        "taxa": {"maximum": 1, "minimum": 0, "type": ["number", "null"]}
+      },
+      "required": ["amostrados", "casados", "taxa"],
+      "type": "object"
+    },
+    "extremidade": {
+      "additionalProperties": false,
+      "properties": {
+        "colunas": {"items": {"type": "string"}, "minItems": 1, "type": "array"},
+        "relacao": {"type": "string"},
+        "schema": {"type": "string"}
+      },
+      "required": ["colunas", "relacao", "schema"],
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "formato": {"const": "tenant-efeito"},
+    "pares": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "com_filtro": {"$ref": "#/$defs/contagem"},
+          "destino": {"$ref": "#/$defs/extremidade"},
+          "diferenca": {"maximum": 1, "minimum": -1, "type": ["number", "null"]},
+          "erro": {"type": ["string", "null"]},
+          "origem": {"$ref": "#/$defs/extremidade"},
+          "sem_filtro": {"oneOf": [{"$ref": "#/$defs/contagem"}, {"type": "null"}]}
+        },
+        "required": ["com_filtro", "destino", "diferenca", "erro", "origem", "sem_filtro"],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "resumo": {
+      "additionalProperties": false,
+      "properties": {
+        "diferenca_maxima": {"type": ["number", "null"]},
+        "diferenca_media": {"type": ["number", "null"]},
+        "interrompido_por_freio": {"type": "boolean"},
+        "limiar_diferenca": {"type": "number"},
+        "pares_chave_sem_tenant": {"minimum": 0, "type": "integer"},
+        "pares_com_diferenca_relevante": {"minimum": 0, "type": "integer"},
+        "pares_com_erro": {"minimum": 0, "type": "integer"},
+        "pares_com_taxa_sem_filtro_maior": {"minimum": 0, "type": "integer"},
+        "pares_medidos": {"minimum": 0, "type": "integer"}
+      },
+      "required": [
+        "diferenca_maxima", "diferenca_media", "interrompido_por_freio", "limiar_diferenca",
+        "pares_chave_sem_tenant", "pares_com_diferenca_relevante", "pares_com_erro",
+        "pares_com_taxa_sem_filtro_maior", "pares_medidos"
+      ],
+      "type": "object"
+    },
+    "solicitados": {"minimum": 0, "type": "integer"},
+    "versao_formato": {"const": 1}
+  },
+  "required": ["formato", "pares", "resumo", "solicitados", "versao_formato"],
+  "type": "object"
+}
